@@ -1,6 +1,8 @@
 import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
 
+#TODO: add methods for translating to point annotations (and density map generation) and regression annotation (single value)!
+
 def get_bboxes(xml_fp):
 
     """
@@ -13,14 +15,12 @@ def get_bboxes(xml_fp):
       - a list of lists w/all bbox annotations in (xmin, ymin, xmax, ymax) format
     """
 
-    tree = ET.parse(xml_file)
+    tree = ET.parse(xml_fp)
     root = tree.getroot()
 
     list_with_all_boxes = []
 
     for boxes in root.iter('object'):
-        filename = root.find('filename').text
-
         xmin = int(float(boxes.find("bndbox/xmin").text)) #have to do the float thing for Kyle's CVAT annotations
         ymin = int(float(boxes.find("bndbox/ymin").text))
         xmax = int(float(boxes.find("bndbox/xmax").text))
