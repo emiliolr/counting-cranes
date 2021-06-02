@@ -65,7 +65,7 @@ class BirdDataset(Dataset):
             tiled_class_labels = []
             tile_method = get_tiling_method('random')
             for i in range(self.num_tiles):
-                tile = tile_method(image = image, bboxes = bboxes, class_labels = labels)
+                tile = tile_method(image = image, bboxes = bboxes, class_labels = labels) #TODO: getting an error here... something about bboxes on the edge?
                 tiled_images.append(tile['image'])
                 tiled_bboxes.append(tile['bboxes'])
                 tiled_class_labels.append(tile['class_labels'])
@@ -117,6 +117,15 @@ def collate_w_tiles(batch):
     return images, targets
 
 def get_tiling_method(type = 'random'):
+
+    """
+    A convenience function to store methods for tiling.
+    Inputs:
+      - type: the type of tiling to be performed (one of random, overlap, or no_overlap)
+    Outputs:
+      - A chain of composed albumentations transformations to be used for tiling
+    """
+
     if type == 'random':
         tiling = A.Compose([A.RandomCrop(224, 244),
                             ToTensorV2()],

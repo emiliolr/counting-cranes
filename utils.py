@@ -21,13 +21,16 @@ def get_bboxes(xml_fp):
     tree = ET.parse(xml_fp)
     root = tree.getroot()
 
+    width = int(root.findall('size')[0].findall('width')[0].text)
+    height = int(root.findall('size')[0].findall('height')[0].text)
+
     list_with_all_boxes = []
 
     for boxes in root.iter('object'):
-        xmin = np.clip(int(float(boxes.find('bndbox/xmin').text)), 0, 1280)
-        ymin = np.clip(int(float(boxes.find('bndbox/ymin').text)), 0, 720)
-        xmax = np.clip(int(float(boxes.find('bndbox/xmax').text)), 0, 1280)
-        ymax = np.clip(int(float(boxes.find('bndbox/ymax').text)), 0, 720)
+        xmin = np.clip(int(float(boxes.find('bndbox/xmin').text)), 0, width) #using clip to ensure that bboxes are w/in the image
+        ymin = np.clip(int(float(boxes.find('bndbox/ymin').text)), 0, height)
+        xmax = np.clip(int(float(boxes.find('bndbox/xmax').text)), 0, width)
+        ymax = np.clip(int(float(boxes.find('bndbox/ymax').text)), 0, height)
 
         list_with_all_boxes.append([xmin, ymin, xmax, ymax])
 
