@@ -15,7 +15,7 @@ class BirdDataset(Dataset):
     A custom PyTorch dataset for our bird imagery.
     """
 
-    def __init__(self, root_dir, transforms):
+    def __init__(self, root_dir, transforms, annotation_mode = 'bboxes'):
         self.root_dir = root_dir
         self.transforms = transforms
 
@@ -27,6 +27,9 @@ class BirdDataset(Dataset):
         imgs = [i.split('.')[0] for i in self.image_fps] #getting the filenames
         annots = [a.split('.')[0] for a in self.annotation_fps]
         assert imgs == annots, 'Annotation and image filepaths don\'t align'
+
+        #Checking that the annotation type is valid
+        assert annotation_mode in ['bboxes', 'points', 'regression'], 'Choose one of bboxes, point, or regression for annotation type'
 
     def __getitem__(self, index):
         #Get the particular image and annotated bboxes
