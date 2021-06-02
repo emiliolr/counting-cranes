@@ -1,9 +1,10 @@
 import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
+import numpy as np
 
 #TODO:
 #  - add density map generation method (see saved links!)
-#  - add image tiling
+#  - add image tiling (will have to be aware of annotations and annotation type!)
 
 def get_bboxes(xml_fp):
 
@@ -23,16 +24,18 @@ def get_bboxes(xml_fp):
     list_with_all_boxes = []
 
     for boxes in root.iter('object'):
-        xmin = int(float(boxes.find("bndbox/xmin").text)) #have to do the float thing for Kyle's CVAT annotations
-        ymin = int(float(boxes.find("bndbox/ymin").text))
-        xmax = int(float(boxes.find("bndbox/xmax").text))
-        ymax = int(float(boxes.find("bndbox/ymax").text))
+        xmin = np.clip(int(float(boxes.find('bndbox/xmin').text)), 0, 1280)
+        ymin = np.clip(int(float(boxes.find('bndbox/ymin').text)), 0, 720)
+        xmax = np.clip(int(float(boxes.find('bndbox/xmax').text)), 0, 1280)
+        ymax = np.clip(int(float(boxes.find('bndbox/ymax').text)), 0, 720)
 
         list_with_all_boxes.append([xmin, ymin, xmax, ymax])
 
     return list_with_all_boxes
 
+#TODO: may want to wait until after augmentations to translate - that way we can let albumentation handle bbox translation!
 def get_points(xml_fp):
+
     """
     Builds point annotations from the centroid of bounding box annotations.
     Inputs:
@@ -52,6 +55,7 @@ def get_points(xml_fp):
     return points
 
 def get_regression(xml_fp):
+
     """
     Builds an image count from bboxes.
     Inputs:
