@@ -20,13 +20,15 @@ class BirdDataset(Dataset):
       - transforms: a composed chain of transformations
       - annotation_mode: the type of annotations to use (bboxes, points, or regression)
       - num_tiles: the number of tiles to split each parent image into
+      - max_neg_examples: the maximum number of negative examples (zero birds) to include in a training batch
     """
 
-    def __init__(self, root_dir, transforms, annotation_mode = 'bboxes', num_tiles = 18):
+    def __init__(self, root_dir, transforms, annotation_mode = 'bboxes', num_tiles = 18, max_neg_examples = 6):
         self.root_dir = root_dir
         self.transforms = transforms
         self.annotation_mode = annotation_mode
         self.num_tiles = num_tiles
+        self.max_neg_examples = max_neg_examples
 
         #Load the images (tif) and annotations (xml) - sorting to make sure they're in the same order!
         self.image_fps = sorted(os.listdir(os.path.join(self.root_dir, 'images')))
@@ -64,13 +66,18 @@ class BirdDataset(Dataset):
             tiled_bboxes = []
             tiled_class_labels = []
             tile_method = get_tiling_method('random')
-            for i in range(self.num_tiles):
-                tile = tile_method(image = image, bboxes = bboxes, class_labels = labels) #TODO: getting an error here... something about bboxes on the edge?
-                tiled_images.append(tile['image'] / 255) #TODO: better way to do this? expects input pixels to be in [0, 1] rather than [0, 255] 
+            negative_example_ct = 0
+            while len(tiled_images) < self.num_tiles:
+                tile = tile_method(image = image, bboxes = bboxes, class_labels = labels)
+
                 if len(tile['bboxes']) == 0:
-                    tiled_bboxes.append(torch.empty((0, 4), dtype = torch.float32))
+                    if negative_example_ct >= self.max_neg_examples: #if we have too many negative examples, don't add the current neg example...
+                        continue
+                    negative_example_ct += 1
+                    tiled_bboxes.append(torch.empty((0, 4), dtype = torch.float32)) #for negative examples, i.e., no bbox in the tile
                 else:
                     tiled_bboxes.append(tile['bboxes'])
+                tiled_images.append(tile['image'] / 255) #TODO: better way to do this? expects input pixels to be in [0, 1] rather than [0, 255]
                 tiled_class_labels.append(tile['class_labels'])
 
             #Ensuring that the return is formatted correctly for Faster R-CNN

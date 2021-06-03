@@ -26,6 +26,14 @@ def get_faster_rcnn(num_classes = 2):
 
 #TODO: add logging?
 class FasterRCNNLightning(pl.LightningModule):
+
+    """
+    A PyTorch Lightning wrapper for Faster R-CNN.
+    Inputs:
+      - model: the Faster R-CNN PyTorch model to be used
+      - lr: the learning rate for use in the optimizer
+    """
+
     def __init__(self, model, lr = 0.001):
         super().__init__()
 
@@ -46,19 +54,23 @@ class FasterRCNNLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         pass
 
-    #TODO: stopped here!    
     def test_step(self, batch, batch_idx):
         X, y = batch
 
         preds = self.model(X)
         true_bboxes = [t['boxes'] for t in y]
-        pred_bboxes = [t['boxes'] for t preds]
+        pred_bboxes = [t['boxes'] for t in preds]
 
         return {'pred_bboxes' : pred_bboxes, 'true_bboxes' : true_bboxes}
 
+    def test_epoch_end(self, outs):
+        return outs #outs is a list of all test_step outputs
+
     def configure_optimizers(self):
         #TODO: add a learning rate scheduler
-        optimizer = torch.optim.SGD(self.model.parameters(), #these are th
+
+        #Using the hyperparams from the original Faster R-CNN paper
+        optimizer = torch.optim.SGD(self.model.parameters(),
                                lr = self.learning_rate,
                                momentum = 0.9,
                                weight_decay = 0.005)
@@ -73,6 +85,8 @@ if __name__ == '__main__':
     #Trying a forward pass
     model.eval()
     predict = model(fake_batch)
-    print(predict)
+    # print(predict)
 
     #TRYING OUT PYTORCH LIGHTNING CLASS:
+    faster_rcnn = FasterRCNNLightning(model)
+    print(faster_rcnn(fake_batch))

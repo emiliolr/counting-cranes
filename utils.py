@@ -32,6 +32,9 @@ def get_bboxes(xml_fp):
         xmax = np.clip(int(float(boxes.find('bndbox/xmax').text)), 0, width)
         ymax = np.clip(int(float(boxes.find('bndbox/ymax').text)), 0, height)
 
+        if xmax - xmin <= 0 or ymax - ymin <= 0: #throwing away bboxes that have no width or height - shouldn't happen often!
+            continue
+
         list_with_all_boxes.append([xmin, ymin, xmax, ymax])
 
     return list_with_all_boxes
