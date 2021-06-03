@@ -66,8 +66,11 @@ class BirdDataset(Dataset):
             tile_method = get_tiling_method('random')
             for i in range(self.num_tiles):
                 tile = tile_method(image = image, bboxes = bboxes, class_labels = labels) #TODO: getting an error here... something about bboxes on the edge?
-                tiled_images.append(tile['image'])
-                tiled_bboxes.append(tile['bboxes'])
+                tiled_images.append(tile['image'] / 255) #TODO: better way to do this? expects input pixels to be in [0, 1] rather than [0, 255] 
+                if len(tile['bboxes']) == 0:
+                    tiled_bboxes.append(torch.empty((0, 4), dtype = torch.float32))
+                else:
+                    tiled_bboxes.append(tile['bboxes'])
                 tiled_class_labels.append(tile['class_labels'])
 
             #Ensuring that the return is formatted correctly for Faster R-CNN
