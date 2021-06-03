@@ -1,4 +1,6 @@
 {
-  "data_filepath" : "/Users/emiliolr/Desktop/Conservation Research/final_dataset",
+  "data_filepath_local" : "/Users/emiliolr/Desktop/Conservation Research/final_dataset",
+  "data_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Data Annotation/final_dataset",
+  "code_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/counting-cranes",
   "random_seed" : 1693
 }
