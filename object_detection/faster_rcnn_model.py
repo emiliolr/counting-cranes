@@ -24,7 +24,9 @@ def get_faster_rcnn(num_classes = 2):
 
     return model
 
-#TODO: add logging?
+#TODO:
+#  - add logging?
+#  - do we want to be freezing parameters anywhere here?
 class FasterRCNNLightning(pl.LightningModule):
 
     """
