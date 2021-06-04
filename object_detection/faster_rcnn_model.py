@@ -79,6 +79,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return optimizer
 
+#TESTS:
 if __name__ == '__main__':
     #TESTING get_faster_rcnn FUNCTION:
     fake_batch = torch.randn(2, 3, 224, 224)

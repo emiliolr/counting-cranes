@@ -10,7 +10,6 @@ from albumentations.pytorch import ToTensorV2
 import numpy as np
 
 #TODO: we will have to do some special things to hold out 2018 data for evaluation of overlap
-#TODO: figure out where image tiling fits in... maybe in constructor?
 class BirdDataset(Dataset):
 
     """
@@ -65,6 +64,7 @@ class BirdDataset(Dataset):
             tiled_images = []
             tiled_bboxes = []
             tiled_class_labels = []
+
             tile_method = get_tiling_method('random')
             negative_example_ct = 0
             while len(tiled_images) < self.num_tiles:
@@ -74,14 +74,18 @@ class BirdDataset(Dataset):
                     if negative_example_ct >= self.max_neg_examples: #if we have too many negative examples, don't add the current neg example...
                         continue
                     negative_example_ct += 1
-                    tiled_bboxes.append(torch.empty((0, 4), dtype = torch.float32)) #for negative examples, i.e., no bbox in the tile
+
+                    new_bboxes = torch.empty((0, 4), dtype = torch.float32) #for negative examples, i.e., no bbox in the tile
                 else:
-                    tiled_bboxes.append(tile['bboxes'])
+                    new_bboxes = purge_invalid_bboxes(tile['bboxes'])
+
+                tiled_bboxes.append(new_bboxes)
                 tiled_images.append(tile['image'] / 255) #TODO: better way to do this? expects input pixels to be in [0, 1] rather than [0, 255]
-                tiled_class_labels.append(tile['class_labels'])
+                tiled_class_labels.append(np.ones((len(new_bboxes), )))
 
             #Ensuring that the return is formatted correctly for Faster R-CNN
             batch_of_tiles = []
+
             for img, boxes, labels in zip(tiled_images, tiled_bboxes, tiled_class_labels):
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(boxes, dtype = torch.float32)
@@ -145,3 +149,17 @@ def get_tiling_method(type = 'random'):
         pass
     elif type == 'no_overlap':
         pass
+
+#TESTS:
+if __name__ == '__main__':
+    import json
+    from torch.utils.data import DataLoader
+
+    config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
+    DATA_FP = config['data_filepath_local']
+
+    #TESTING THE DATASET:
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms())
+    dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
+
+    print(next(iter(dataloader)))
