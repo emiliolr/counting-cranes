@@ -10,7 +10,7 @@ def get_faster_rcnn(num_classes = 2):
     """
     A convenience function to get a pre-trained Faster R-CNN model w/a ResNet50 backbone.
     Inputs:
-      - num_classes: the nummber of classes to predict
+      - num_classes: the number of classes to predict
     Outputs:
       - A PyTorch model
     """

@@ -77,10 +77,10 @@ class BirdDataset(Dataset):
 
                     new_bboxes = torch.empty((0, 4), dtype = torch.float32) #for negative examples, i.e., no bbox in the tile
                 else:
-                    new_bboxes = purge_invalid_bboxes(tile['bboxes'])
+                    new_bboxes = purge_invalid_bboxes(tile['bboxes']) #making sure to get rid of any invalid bboxes here
 
                 tiled_bboxes.append(new_bboxes)
-                tiled_images.append(tile['image'] / 255) #TODO: better way to do this? expects input pixels to be in [0, 1] rather than [0, 255]
+                tiled_images.append(tile['image'] / 255) #getting pixels into [0, 1] range rather than [0, 255]
                 tiled_class_labels.append(np.ones((len(new_bboxes), )))
 
             #Ensuring that the return is formatted correctly for Faster R-CNN
@@ -143,7 +143,7 @@ def get_tiling_method(type = 'random'):
     if type == 'random':
         tiling = A.Compose([A.RandomCrop(224, 244),
                             ToTensorV2()],
-                            bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels']))
+                            bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
         return tiling
     elif type == 'overlap':
         pass
@@ -160,6 +160,17 @@ if __name__ == '__main__':
 
     #TESTING THE DATASET:
     bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms())
-    dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
+    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
-    print(next(iter(dataloader)))
+    num_degen = 0
+    for i, data in enumerate(bird_dataloader):
+      print('On image', i)
+      images, targets = data
+      for d in targets:
+        for b in d['boxes'].tolist():
+          xmin, ymin, xmax, ymax = b
+          if xmin >= xmax or ymin >= ymax:
+            print('Invalid bbox:', b)
+            num_degen += 1
+      print()
+    print(f'We have {num_degen} invalid bboxes')

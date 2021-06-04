@@ -2,6 +2,8 @@ import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
 import numpy as np
 from torch import as_tensor
+import os
+import numpy as np
 
 #TODO:
 #  - add density map generation method (see saved links!)
@@ -108,13 +110,12 @@ def visualize_points(image_fp, xml_fp):
 
     return img
 
-def purge_invalid_bboxes(list_of_bboxes, return_tensor = False):
+def purge_invalid_bboxes(list_of_bboxes):
 
     """
     A convenience function to remove any invalid bounding boxes.
     Inputs:
      - list_of_bboxes: a list of lists that contains bboxes in [xmin, ymin, xmax, ymax] format
-     - return_tensor: should we return a tensor?
     Outputs:
       - A final list (or tensor) of valid bboxes
     """
@@ -123,16 +124,44 @@ def purge_invalid_bboxes(list_of_bboxes, return_tensor = False):
     for box in list_of_bboxes:
         xmin, ymin, xmax, ymax = box
 
-        if xmin >= xmax or ymin >= ymax:
-            continue
-        final_bboxes.append(box)
+        if xmin < xmax and ymin < ymax: #conditions for a valid bbox!
+            final_bboxes.append(box)
+        else:
+            # print('purged', box)
+            pass
 
-    if return_tensor:
-        return torch.as_tensor(final_bboxes)
     return final_bboxes
+
+def bbox_dataset_statistics(root_dir):
+
+    """
+    A function to get basic annotation statistics (average, minimum, maximum size).
+    Inputs:
+      - root_dir: the root directory for imagery/annotations
+    Outputs:
+      - A dictionary with several relevant bbox stats
+    """
+
+    annotation_fps = sorted(os.listdir(os.path.join(root_dir, 'annotations')))
+
+    for fp in annotation_fps:
+        annotation_fp = os.path.join(root_dir, 'annotations', fp)
+        bboxes = get_bboxes(annotation_fp)
+
+        areas = [(box[3] - box[1]) * (box[2] - box[0]) for box in bboxes]
+
+        return {'avg_area' : np.mean(areas), 'min_area' : np.min(areas), 'max_area' : np.max(areas)}
 
 #TESTS:
 if __name__ == '__main__':
     #TESTING purge_invalid_bboxes:
-    dummy_boxes = [[0, 5, 0, 6], [1, 3, 2, 5]]
-    print(purge_invalid_bboxes(dummy_boxes))
+    dummy_boxes = [[0, 5, 0, 6], [1, 3, 2, 5], [44.0, 224.0, 48.0, 224.0]]
+    # print(purge_invalid_bboxes(dummy_boxes))
+
+    #TESTING bbox_dataset_statistics:
+    import json
+
+    config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
+    DATA_FP = config['data_filepath_local']
+
+    print(bbox_dataset_statistics(DATA_FP))
