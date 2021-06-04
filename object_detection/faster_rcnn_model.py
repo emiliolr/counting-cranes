@@ -15,8 +15,9 @@ def get_faster_rcnn(num_classes = 2):
       - A PyTorch model
     """
 
-    #Loading a model pre-trained on COCO
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True)
+    #Loading a model pre-trained on COCO - increasing the maximum possible number of detections
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True,
+                                                                 box_detections_per_img = 500)
 
     #Replace the classifier - get input features from the existing model pipeline and then replace!
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -43,6 +44,7 @@ class FasterRCNNLightning(pl.LightningModule):
         self.learning_rate = lr
 
     def forward(self, X):
+        self.model.eval() #adding this in b/c forward pass behavior changes if we're in train mode!
         return self.model(X)
 
     def training_step(self, batch, batch_idx):
@@ -65,6 +67,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return {'pred_bboxes' : pred_bboxes, 'true_bboxes' : true_bboxes}
 
+    #TODO: start filling this out w/metrics so that we can evaluate our model!
     def test_epoch_end(self, outs):
         return outs #outs is a list of all test_step outputs
 
@@ -92,4 +95,4 @@ if __name__ == '__main__':
 
     #TRYING OUT PYTORCH LIGHTNING CLASS:
     faster_rcnn = FasterRCNNLightning(model)
-    print(faster_rcnn(fake_batch))
+    # print(faster_rcnn(fake_batch))
