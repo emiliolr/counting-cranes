@@ -5,10 +5,6 @@ from torch import as_tensor
 import os
 import numpy as np
 
-#TODO:
-#  - add density map generation method (see saved links!)
-#  - add image tiling (will have to be aware of annotations and annotation type!)
-
 def get_bboxes(xml_fp):
 
     """
@@ -71,25 +67,31 @@ def get_regression(xml_fp):
 
     return len(get_bboxes(xml_fp))
 
-def visualize_bboxes(image_fp, xml_fp):
+def visualize_bboxes(image_fp, xml_fp, image = None, bboxes = None):
 
     """
     Draws bboxes on image.
+    Will draw directly on provided image if bboxes and image are both provided.
     Inputs:
       - image_fp: the image filepath
       - xml_fp: the xml filepath
+      - image: a PIL image
+      - bboxes: a list of bboxes
     Outputs:
       - A PIL image w/bboxes drawn on
     """
 
-    img = Image.open(image_fp)
-    bboxes = get_bboxes(xml_fp)
+    assert not((image is None and bboxes is not None) or (image is not None and bboxes is None)), 'Make sure to include both an image and bboxes'
 
-    draw = ImageDraw.Draw(img)
+    if image is None and bboxes is None: #if we were provided w/FPs, we'll have to pull these in..
+        image = Image.open(image_fp)
+        bboxes = get_bboxes(xml_fp)
+
+    draw = ImageDraw.Draw(image)
     for b in bboxes:
         draw.rectangle(b, outline = 'red', width = 1)
 
-    return img
+    return image
 
 def visualize_points(image_fp, xml_fp):
 
@@ -135,7 +137,7 @@ def purge_invalid_bboxes(list_of_bboxes):
 def bbox_dataset_statistics(root_dir):
 
     """
-    A function to get basic annotation statistics (average, minimum, maximum size).
+    A function to get basic annotation statistics (average, minimum, maximum size, etc.).
     Inputs:
       - root_dir: the root directory for imagery/annotations
     Outputs:

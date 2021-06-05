@@ -72,7 +72,7 @@ class FasterRCNNLightning(pl.LightningModule):
         return outs #outs is a list of all test_step outputs
 
     def configure_optimizers(self):
-        #TODO: add a learning rate scheduler
+        #TODO: add a learning rate scheduler?
 
         #Using the hyperparams from the original Faster R-CNN paper
         optimizer = torch.optim.SGD(self.model.parameters(),
