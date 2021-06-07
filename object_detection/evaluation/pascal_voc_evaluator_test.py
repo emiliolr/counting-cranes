@@ -3,8 +3,8 @@ import pathlib
 from utils import get_filenames_of_path
 from utils import from_file_to_BoundingBox
 from itertools import chain
-from metrics.pascal_voc_evaluator import get_pascalvoc_metrics
-from metrics.enumerators import MethodAveragePrecision
+from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
+from evaluation.enumerators import MethodAveragePrecision
 
 # %% root directory
 root = pathlib.Path(r"C:\Users\johan\Desktop\Johannes\Heads")
@@ -55,8 +55,8 @@ for batch in dataloader_valid:
     all_gt.append(gt_boxes)
     all_pred.append(pred_boxes)
 
-    from metrics.pascal_voc_evaluator import get_pascalvoc_metrics
-    from metrics.enumerators import MethodAveragePrecision
+    from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
+    from evaluation.enumerators import MethodAveragePrecision
     metric = get_pascalvoc_metrics(gt_boxes=gt_boxes,
                                    det_boxes=pred_boxes,
                                    iou_threshold=0.5,

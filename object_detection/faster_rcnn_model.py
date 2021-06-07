@@ -49,7 +49,7 @@ class FasterRCNNLightning(pl.LightningModule):
         self.learning_rate = lr
         self.iou_threshold = iou_threshold
 
-        self.save_hyperparameters()
+        # self.save_hyperparameters()
 
     def forward(self, X):
         self.model.eval() #adding this in b/c forward pass behavior changes if we're in train mode!
@@ -63,6 +63,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return loss
 
+    #TODO: implement validation once testing is working!
     def validation_step(self, batch, batch_idx):
         pass
 
@@ -98,7 +99,7 @@ class FasterRCNNLightning(pl.LightningModule):
         self.log('Test_mAP', mAP)
 
     def configure_optimizers(self):
-        #TODO: add a learning rate scheduler?
+        #TODO: add a learning rate scheduler
 
         #Using the hyperparams from the original Faster R-CNN paper
         optimizer = torch.optim.SGD(self.model.parameters(),

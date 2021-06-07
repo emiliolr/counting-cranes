@@ -27,8 +27,8 @@ def enable_gui_qt():
 
 def from_file_to_BoundingBox(file_name: pathlib.Path, groundtruth: bool = True):
     """Returns a list of BoundingBox objects from groundtruth or prediction."""
-    from metrics.bounding_box import BoundingBox
-    from metrics.enumerators import BBFormat, BBType
+    from evaluation.bounding_box import BoundingBox
+    from evaluation.enumerators import BBFormat, BBType
 
     file = torch.load(file_name)
     labels = file['labels']
@@ -47,8 +47,8 @@ def from_file_to_BoundingBox(file_name: pathlib.Path, groundtruth: bool = True):
 
 def from_dict_to_BoundingBox(file: dict, name: str, groundtruth: bool = True):
     """Returns list of BoundingBox objects from groundtruth or prediction."""
-    from metrics.bounding_box import BoundingBox
-    from metrics.enumerators import BBFormat, BBType
+    from evaluation.bounding_box import BoundingBox
+    from evaluation.enumerators import BBFormat, BBType
 
     labels = file['labels']
     boxes = file['boxes']
