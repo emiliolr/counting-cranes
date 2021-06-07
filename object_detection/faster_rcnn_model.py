@@ -2,6 +2,7 @@ import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import pytorch_lightning as pl
+from itertools import chain
 
 from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
 from evaluation.enumerators import MethodAveragePrecision
@@ -75,16 +76,16 @@ class FasterRCNNLightning(pl.LightningModule):
 
         preds = self.model(X)
 
-        true_bboxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, img_fps)]
-        true_bboxes = list(chain(*gt_boxes))
+        gt_boxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, img_fps)]
+        gt_boxes = list(chain(*gt_boxes))
 
         pred_boxes = [from_dict_to_BoundingBox(pred, name = name, groundtruth = False) for pred, name in zip(preds, annot_fps)]
         pred_boxes = list(chain(*pred_boxes))
 
-        return {'pred_boxes' : pred_boxes, 'true_boxes' : true_boxes}
+        return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
     def test_epoch_end(self, outs):
-        gt_boxes = [out['true_boxes'] for out in outs] #ground truth
+        gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
         gt_boxes = list(chain(*gt_boxes))
         pred_boxes = [out['pred_boxes'] for out in outs] #predicted
         pred_boxes = list(chain(*pred_boxes))
@@ -97,6 +98,9 @@ class FasterRCNNLightning(pl.LightningModule):
         per_class, mAP = metric['per_class'], metric['mAP']
 
         self.log('Test_mAP', mAP)
+
+        for key, value in per_class.items():
+            self.log(f'Test_AP_{key}', value['AP'])
 
     def configure_optimizers(self):
         #TODO: add a learning rate scheduler
@@ -143,6 +147,6 @@ if __name__ == '__main__':
     bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(), num_tiles = 2, max_neg_examples = 1)
     bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
-    logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')
+    # logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')
     trainer = Trainer()
     trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)

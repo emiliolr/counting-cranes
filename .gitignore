@@ -2,3 +2,4 @@
 .ipynb_checkpoints
 __pycache__
 faster_rcnn_for_testing.pth
+lightning_logs
