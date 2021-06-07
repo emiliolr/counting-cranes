@@ -90,7 +90,7 @@ class BirdDataset(Dataset):
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(boxes, dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(labels, dtype = torch.int64)
-                batch_of_tiles.append((img, target_dict))
+                batch_of_tiles.append((img, target_dict, image_fp, annotation_fp))
 
             return batch_of_tiles
 
@@ -127,8 +127,10 @@ def collate_w_tiles(batch):
     tiles = batch[0] #grabbing the only element of the batch
     images = [t[0] for t in tiles] #produces a list of tensors
     targets = [t[1] for t in tiles] #produces a list of dictionaries
+    img_fps = [t[2] for t in tiles]
+    annot_fps = [t[3] for t in tiles]
 
-    return images, targets
+    return images, targets, img_fps, annot_fps
 
 def get_tiling_method(type = 'random'):
 
@@ -165,7 +167,7 @@ if __name__ == '__main__':
     num_degen = 0
     for i, data in enumerate(bird_dataloader):
       print('On image', i)
-      images, targets = data
+      images, targets, _, _ = data
       for d in targets:
         for b in d['boxes'].tolist():
           xmin, ymin, xmax, ymax = b
