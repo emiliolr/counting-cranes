@@ -30,9 +30,6 @@ def get_faster_rcnn(num_classes = 2):
 
     return model
 
-#TODO:
-#  - add logging to CSV
-#  - do we want to be freezing parameters anywhere here... seems to be learning well, so maybe not!
 class FasterRCNNLightning(pl.LightningModule):
 
     """
@@ -49,8 +46,6 @@ class FasterRCNNLightning(pl.LightningModule):
         self.model = model
         self.learning_rate = lr
         self.iou_threshold = iou_threshold
-
-        # self.save_hyperparameters()
 
     def forward(self, X):
         self.model.eval() #adding this in b/c forward pass behavior changes if we're in train mode!
