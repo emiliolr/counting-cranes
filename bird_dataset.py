@@ -86,11 +86,13 @@ class BirdDataset(Dataset):
             #Ensuring that the return is formatted correctly for Faster R-CNN
             batch_of_tiles = []
 
-            for img, boxes, labels in zip(tiled_images, tiled_bboxes, tiled_class_labels):
+            for i, content in enumerate(zip(tiled_images, tiled_bboxes, tiled_class_labels)):
+                img, boxes, labels = content
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(boxes, dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(labels, dtype = torch.int64)
-                batch_of_tiles.append((img, target_dict, image_fp, annotation_fp))
+                img_name = self.image_fps[index].replace('.TIF', '').replace('.tif', '')
+                batch_of_tiles.append((img, target_dict, f'{img_name}_{i}', f'{img_name}_{i}')) #treat each tile as a seperate training example (in its name)
 
             return batch_of_tiles
 
@@ -164,15 +166,20 @@ if __name__ == '__main__':
     bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms())
     bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
-    num_degen = 0
-    for i, data in enumerate(bird_dataloader):
-      print('On image', i)
-      images, targets, _, _ = data
-      for d in targets:
-        for b in d['boxes'].tolist():
-          xmin, ymin, xmax, ymax = b
-          if xmin >= xmax or ymin >= ymax:
-            print('Invalid bbox:', b)
-            num_degen += 1
-      print()
-    print(f'We have {num_degen} invalid bboxes')
+    images, targets, x_name, y_name = next(iter(bird_dataloader))
+    print(x_name)
+    print()
+    print(y_name)
+
+    # num_degen = 0
+    # for i, data in enumerate(bird_dataloader):
+    #   print('On image', i)
+    #   images, targets, _, _ = data
+    #   for d in targets:
+    #     for b in d['boxes'].tolist():
+    #       xmin, ymin, xmax, ymax = b
+    #       if xmin >= xmax or ymin >= ymax:
+    #         print('Invalid bbox:', b)
+    #         num_degen += 1
+    #   print()
+    # print(f'We have {num_degen} invalid bboxes')

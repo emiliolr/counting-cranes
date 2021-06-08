@@ -2,10 +2,11 @@
   "data_filepath_local" : "/Users/emiliolr/Desktop/Conservation Research/final_dataset",
   "data_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Data Annotation/final_dataset",
   "code_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/counting-cranes",
-  "random_seed" : 1693,
   "model_saves_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/models_saves",
+  "random_seed" : 1693,
   "faster_rcnn_params" : {
     "learning_rate" : 0.001,
-    "batch_size" : 1
+    "batch_size" : 1,
+    "iou_threshold_EVALUATION" : 0.3
   }
 }

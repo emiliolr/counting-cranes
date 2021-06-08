@@ -72,14 +72,14 @@ class FasterRCNNLightning(pl.LightningModule):
         pass
 
     def test_step(self, batch, batch_idx):
-        X, y, img_fps, annot_fps = batch
+        X, y, X_name, y_name = batch
 
         preds = self.model(X)
 
-        gt_boxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, img_fps)]
+        gt_boxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, X_name)]
         gt_boxes = list(chain(*gt_boxes))
 
-        pred_boxes = [from_dict_to_BoundingBox(pred, name = name, groundtruth = False) for pred, name in zip(preds, annot_fps)]
+        pred_boxes = [from_dict_to_BoundingBox(pred, name = name, groundtruth = False) for pred, name in zip(preds, y_name)]
         pred_boxes = list(chain(*pred_boxes))
 
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
@@ -95,12 +95,15 @@ class FasterRCNNLightning(pl.LightningModule):
                                        iou_threshold = self.iou_threshold,
                                        method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
                                        generate_table = True)
-        per_class, mAP = metric['per_class'], metric['mAP']
 
-        self.log('Test_mAP', mAP)
+        per_class = metric['per_class'][1] #we only need metrics from class 1, our only class...
+        AP = per_class['AP']
+        TP_num = per_class['total TP']
+        FP_num = per_class['total FP']
 
-        for key, value in per_class.items():
-            self.log(f'Test_AP_{key}', value['AP'])
+        self.log('Test_AP', AP)
+        self.log('TP_num', TP_num)
+        self.log('FP_num', FP_num)
 
     def configure_optimizers(self):
         #TODO: add a learning rate scheduler
@@ -126,9 +129,9 @@ if __name__ == '__main__':
 
     #TRYING OUT PYTORCH LIGHTNING CLASS:
     model = get_faster_rcnn(num_classes = 2)
-    model_fp = '/Users/emiliolr/Desktop/counting-cranes/faster_rcnn_for_testing.pth'
+    model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
     model.load_state_dict(torch.load(model_fp))
-    faster_rcnn = FasterRCNNLightning(model)
+    faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.1)
     # print(faster_rcnn)
 
     #TRYING OUT MODEL TESTING:
@@ -144,8 +147,9 @@ if __name__ == '__main__':
     sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
     from bird_dataset import *
 
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(), num_tiles = 2, max_neg_examples = 1)
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(), num_tiles = 2, max_neg_examples = 0)
+    subset = torch.utils.data.Subset(bird_dataset, [1, 2, 3])
+    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
     # logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')
     trainer = Trainer()
