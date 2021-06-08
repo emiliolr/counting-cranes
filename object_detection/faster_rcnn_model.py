@@ -59,12 +59,16 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return loss
 
+    def training_epoch_end(self, outs):
+        self.log('Total_loss', outs[-1]) #log the loss from the final batch of the epoch
+
     #TODO: have this use tiling w/o overlap, once you have that implemented!
     def validation_step(self, batch, batch_idx):
         X, y, X_name, y_name = batch
 
         preds = self.model(X)
 
+        #Getting our predictions into the correct format for AP calculation
         gt_boxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, X_name)]
         gt_boxes = list(chain(*gt_boxes))
 
@@ -90,6 +94,7 @@ class FasterRCNNLightning(pl.LightningModule):
         TP_num = per_class['total TP']
         FP_num = per_class['total FP']
 
+        #Logging key metrics
         self.log('Validation_AP', AP)
         self.log('Validation_TP', TP_num)
         self.log('Validation_FP', FP_num)
@@ -128,15 +133,18 @@ class FasterRCNNLightning(pl.LightningModule):
         self.log('Test_TP', TP_num)
         self.log('Test_FP', FP_num)
 
-    #TODO: add a learning rate scheduler
     def configure_optimizers(self):
-        #Using the setup from the original Faster R-CNN paper
-        optimizer = torch.optim.SGD(self.model.parameters(),
+        optimizer = torch.optim.SGD(self.model.parameters(), #using the optimizer setup from the original Faster R-CNN paper
                                lr = self.learning_rate,
                                momentum = 0.9,
                                weight_decay = 0.005)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                                  mode = 'max',
+                                                                  factor = 0.5,
+                                                                  patience = 5,
+                                                                  min_lr = 0)
 
-        return optimizer
+        return {'optimizer' : optimizer, 'lr_scheduler' : lr_scheduler, 'monitor' : 'Validation_AP'}
 
 #TESTS:
 if __name__ == '__main__':
