@@ -64,12 +64,40 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return loss
 
-    #TODO: implement validation once testing is working!
+    #TODO: have this use tiling w/o overlap, once you have that implemented!
     def validation_step(self, batch, batch_idx):
-        pass
+        X, y, X_name, y_name = batch
+
+        preds = self.model(X)
+
+        gt_boxes = [from_dict_to_BoundingBox(target, name = name, groundtruth = True) for target, name in zip(y, X_name)]
+        gt_boxes = list(chain(*gt_boxes))
+
+        pred_boxes = [from_dict_to_BoundingBox(pred, name = name, groundtruth = False) for pred, name in zip(preds, y_name)]
+        pred_boxes = list(chain(*pred_boxes))
+
+        return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
     def validation_epoch_end(self, outs):
-        pass
+        gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
+        gt_boxes = list(chain(*gt_boxes))
+        pred_boxes = [out['pred_boxes'] for out in outs] #predicted
+        pred_boxes = list(chain(*pred_boxes))
+
+        metric = get_pascalvoc_metrics(gt_boxes = gt_boxes,
+                                       det_boxes = pred_boxes,
+                                       iou_threshold = self.iou_threshold,
+                                       method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
+                                       generate_table = True)
+
+        per_class = metric['per_class'][1] #we only need metrics from class 1, our only class...
+        AP = per_class['AP']
+        TP_num = per_class['total TP']
+        FP_num = per_class['total FP']
+
+        self.log('Validation_AP', AP)
+        self.log('Validation_TP', TP_num)
+        self.log('Validation_FP', FP_num)
 
     def test_step(self, batch, batch_idx):
         X, y, X_name, y_name = batch
@@ -102,13 +130,12 @@ class FasterRCNNLightning(pl.LightningModule):
         FP_num = per_class['total FP']
 
         self.log('Test_AP', AP)
-        self.log('TP_num', TP_num)
-        self.log('FP_num', FP_num)
+        self.log('Test_TP', TP_num)
+        self.log('Test_FP', FP_num)
 
+    #TODO: add a learning rate scheduler
     def configure_optimizers(self):
-        #TODO: add a learning rate scheduler
-
-        #Using the hyperparams from the original Faster R-CNN paper
+        #Using the setup from the original Faster R-CNN paper
         optimizer = torch.optim.SGD(self.model.parameters(),
                                lr = self.learning_rate,
                                momentum = 0.9,
