@@ -60,7 +60,7 @@ class FasterRCNNLightning(pl.LightningModule):
         return loss
 
     def training_epoch_end(self, outs):
-        self.log('Total_loss', outs[-1]) #log the loss from the final batch of the epoch
+        self.log('Total_loss', outs[-1]['loss']) #log the loss from the final batch of the epoch
 
     #TODO: have this use tiling w/o overlap, once you have that implemented!
     def validation_step(self, batch, batch_idx):

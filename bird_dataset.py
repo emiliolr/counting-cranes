@@ -154,6 +154,44 @@ def get_tiling_method(type = 'random'):
     elif type == 'no_overlap':
         pass
 
+def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
+
+    """
+    A function to perform tiling w/o overlap on parent images.
+    Inputs:
+      - parent_image: the parent image to be tiled
+      - bboxes: a list of lists containing all bboxes in the parent image
+      - labels: a list of the class labels for bboxes in the parent image
+      - tile_size: the size of the tile, in format (width, height)
+    Outputs:
+      - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
+    """
+
+    padded_parent = pad_parent_for_tiles(parent_image, tile_size)
+    tile_width, tile_height = tile_size
+    image_width, image_height = padded_parent.size
+
+    tiles = []
+    targets = []
+    for h in range(0, (height + 1) - tile_height, tile_height):
+        for w in range(0, (width + 1) - tile_width, tile_width):
+            coords = (w, h, w + tile_width, h + tile_height)
+            transform = A.Compose([A.Crop(*coords),
+                                   ToTensorV2()],
+                                   bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+            t = transform(image = np.array(padded_parent), bboxes = bboxes, class_labels = labels)
+
+            if len(t['bboxes']) == 0:
+                new_bboxes = torch.empty((0, 4), dtype = torch.float32)
+            else:
+                new_bboxes = purge_invalid_bboxes(t['bboxes'])
+            target_dict = {'boxes' : new_bboxes, 'labels' : np.ones((len(new_bboxes), ))}
+
+            tiles.append(t['image'] / 255)
+            targets.append(target_dict)
+
+    return tiles, targets
+
 #TESTS:
 if __name__ == '__main__':
     import json
