@@ -34,7 +34,7 @@ def get_bboxes(xml_fp):
 
     return purge_invalid_bboxes(list_with_all_boxes)
 
-#TODO: may want to wait until after augmentations to translate - that way we can let albumentation handle bbox translation!
+#TODO: make this translation after tiling, not from a file!
 def get_points(xml_fp):
 
     """
@@ -187,11 +187,11 @@ def pad_parent_for_tiles(parent_image, tile_size = (224, 224)):
     """
 
     tile_width, tile_height = tile_size
-    image_width, image_height = image.size
+    image_width, image_height = parent_image.size
     right_padding = tile_width - (image_width % tile_width)
     bottom_padding = tile_height - (image_height % tile_height)
 
-    return pad_image(image, (right_padding, 0, 0, bottom_padding))
+    return pad_image(parent_image, (right_padding, 0, 0, bottom_padding))
 
 #TESTS:
 if __name__ == '__main__':
