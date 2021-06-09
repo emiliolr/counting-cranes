@@ -177,9 +177,9 @@ if __name__ == '__main__':
     sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
     from bird_dataset import *
 
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(), num_tiles = 2, max_neg_examples = 0)
-    subset = torch.utils.data.Subset(bird_dataset, [1, 2, 3])
-    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
+    subset = torch.utils.data.Subset(bird_dataset, [1, 2])
+    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_w_tiles)
 
     # logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')
     trainer = Trainer()

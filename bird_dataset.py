@@ -58,8 +58,10 @@ class BirdDataset(Dataset):
         labels = np.ones((len(bboxes), ))
 
         #Performing augmentations on the parent image
-        transformed = self.transforms(image = np.array(image))
+        transformed = self.transforms(image = np.array(image), bboxes = bboxes, class_labels = labels)
         image = Image.fromarray(transformed['image'])
+        bboxes = transformed['bboxes']
+        labels = transformed['class_labels']
 
         #Tiling up the parent image using the desired tiling method
         if self.tiling_method == 'random':
@@ -93,17 +95,19 @@ def get_transforms(train = True):
 
     """
     A convenience function to hold transformations for the train and test sets.
-    NOTE: PyTorch's Faster R-CNN impelementation seems to handle normalization.
+    NOTE: PyTorch's Faster R-CNN impelementation handles normalization.
     Inputs:
-      - train: should we return the training or testing transforms?
+      - train: return training or testing transforms?
     Outputs:
-      - Composed PyTorch transformation chain
+      - A chain of composed albumentations transformations
     """
 
     transforms = []
-    #TODO: add albumentation augmentations here!
+    if train: #currently, we aren't using any transforms for validation/testing!
+        transforms.append(A.HorizontalFlip(p = 0.5))
+        transforms.append(A.VerticalFlip(p = 0.5))
 
-    return A.Compose(transforms)
+    return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 
 def collate_w_tiles(batch):
 
@@ -211,23 +215,22 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(), tiling_method = 'w_o_overlap')
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
     bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
-    images, targets, x_name, y_name = next(iter(bird_dataloader))
-    print(x_name)
-    print()
-    print(y_name)
+    # images, targets, x_name, y_name = next(iter(bird_dataloader))
+    # print(x_name)
+    # print()
+    # print(y_name)
 
-    # num_degen = 0
-    # for i, data in enumerate(bird_dataloader):
-    #   print('On image', i)
-    #   images, targets, _, _ = data
-    #   for d in targets:
-    #     for b in d['boxes'].tolist():
-    #       xmin, ymin, xmax, ymax = b
-    #       if xmin >= xmax or ymin >= ymax:
-    #         print('Invalid bbox:', b)
-    #         num_degen += 1
-    #   print()
-    # print(f'We have {num_degen} invalid bboxes')
+    num_degen = 0
+    for i, data in enumerate(bird_dataloader):
+      print('On image', i)
+      images, targets, _, _ = data
+      for d in targets:
+        for b in d['boxes'].tolist():
+          xmin, ymin, xmax, ymax = b
+          if xmin >= xmax or ymin >= ymax:
+            print('Invalid bbox:', b)
+            num_degen += 1
+    print(f'We have {num_degen} invalid bboxes')
