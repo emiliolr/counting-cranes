@@ -112,6 +112,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
+    #TODO: add in metric for counting (maybe MSE over pred tile counts?)
     def test_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
         gt_boxes = list(chain(*gt_boxes))
@@ -178,7 +179,7 @@ if __name__ == '__main__':
     from bird_dataset import *
 
     bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
-    subset = torch.utils.data.Subset(bird_dataset, [1, 2])
+    subset = torch.utils.data.Subset(bird_dataset, [1])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_w_tiles)
 
     # logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')

@@ -35,17 +35,15 @@ def get_bboxes(xml_fp):
     return purge_invalid_bboxes(list_with_all_boxes)
 
 #TODO: make this translation after tiling, not from a file!
-def get_points(xml_fp):
+def get_points(bboxes):
 
     """
     Builds point annotations from the centroid of bounding box annotations.
     Inputs:
-      - xml_fp: an xml file w/bbox annotations
+      - bboxes: a list of lists containing bboxes in PascalVOC format
     Outputs:
       - A list of lists w/point annotations
     """
-
-    bboxes = get_bboxes(xml_fp)
 
     points = []
     for b in bboxes:
@@ -55,17 +53,17 @@ def get_points(xml_fp):
 
     return points
 
-def get_regression(xml_fp):
+def get_regression(bboxes):
 
     """
     Builds an image count from bboxes.
     Inputs:
-      - xml_fp: an xml file w/bbox annotations
+      - bboxes: a list of lists containing bboxes in PascalVOC format
     Outputs:
-      - A single integer fro the image count
+      - A single integer for the image count
     """
 
-    return len(get_bboxes(xml_fp))
+    return len(bboxes)
 
 def visualize_bboxes(image_fp, xml_fp, image = None, bboxes = None):
 
