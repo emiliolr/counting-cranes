@@ -34,7 +34,6 @@ def get_bboxes(xml_fp):
 
     return purge_invalid_bboxes(list_with_all_boxes)
 
-#TODO: make this translation after tiling, not from a file!
 def get_points(bboxes):
 
     """

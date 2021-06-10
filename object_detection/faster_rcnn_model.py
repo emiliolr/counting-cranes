@@ -3,6 +3,8 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import pytorch_lightning as pl
 from itertools import chain
+from sklearn.metrics import mean_squared_error as mse
+from sklearn.metrics import mean_absolute_error as mae
 
 from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
 from evaluation.enumerators import MethodAveragePrecision
@@ -37,7 +39,7 @@ class FasterRCNNLightning(pl.LightningModule):
     Inputs:
       - model: the Faster R-CNN PyTorch model to be used
       - lr: the learning rate for use in the optimizer
-      - iou_threshold: the threshold to use for IoU calculations, in the range [0, 1]
+      - iou_threshold: the threshold to use for validation/test IoU calculations
     """
 
     def __init__(self, model, lr = 0.001, iou_threshold = 0.5):
@@ -62,7 +64,6 @@ class FasterRCNNLightning(pl.LightningModule):
     def training_epoch_end(self, outs):
         self.log('Total_loss', outs[-1]['loss']) #log the loss from the final batch of the epoch
 
-    #TODO: have this use tiling w/o overlap, once you have that implemented!
     def validation_step(self, batch, batch_idx):
         X, y, X_name, y_name = batch
 
@@ -79,15 +80,17 @@ class FasterRCNNLightning(pl.LightningModule):
 
     def validation_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
+        gt_counts = [len(gt) for gt in gt_boxes] #parent image ground truth counts
         gt_boxes = list(chain(*gt_boxes))
+
         pred_boxes = [out['pred_boxes'] for out in outs] #predicted
+        pred_counts = [len(pred) for pred in pred_boxes] #parent image pred counts
         pred_boxes = list(chain(*pred_boxes))
 
         metric = get_pascalvoc_metrics(gt_boxes = gt_boxes,
                                        det_boxes = pred_boxes,
                                        iou_threshold = self.iou_threshold,
-                                       method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
-                                       generate_table = True)
+                                       method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION)
 
         per_class = metric['per_class'][1] #we only need metrics from class 1, our only class...
         AP = per_class['AP']
@@ -95,9 +98,14 @@ class FasterRCNNLightning(pl.LightningModule):
         FP_num = per_class['total FP']
 
         #Logging key metrics
-        self.log('Validation_AP', AP)
-        self.log('Validation_TP', TP_num)
-        self.log('Validation_FP', FP_num)
+        count_rmse = mse(gt_counts, pred_counts, squared = False)
+        count_mae = mae(gt_counts, pred_counts)
+
+        self.log('Val_AP', AP)
+        self.log('Val_TP', TP_num)
+        self.log('Val_FP', FP_num)
+        self.log('Val_RMSE', count_rmse)
+        self.log('Val_MAE', count_mae)
 
     def test_step(self, batch, batch_idx):
         X, y, X_name, y_name = batch
@@ -112,27 +120,33 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
-    #TODO: add in metric for counting (maybe MSE over pred tile counts?)
     def test_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
+        gt_counts = [len(gt) for gt in gt_boxes]
         gt_boxes = list(chain(*gt_boxes))
+
         pred_boxes = [out['pred_boxes'] for out in outs] #predicted
+        pred_counts = [len(pred) for pred in pred_boxes]
         pred_boxes = list(chain(*pred_boxes))
 
         metric = get_pascalvoc_metrics(gt_boxes = gt_boxes,
                                        det_boxes = pred_boxes,
                                        iou_threshold = self.iou_threshold,
-                                       method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
-                                       generate_table = True)
+                                       method = MethodAveragePrecision.EVERY_POINT_INTERPOLATION)
 
         per_class = metric['per_class'][1] #we only need metrics from class 1, our only class...
         AP = per_class['AP']
         TP_num = per_class['total TP']
         FP_num = per_class['total FP']
 
+        count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are based on parent image counts!
+        count_mae = mae(gt_counts, pred_counts)
+
         self.log('Test_AP', AP)
         self.log('Test_TP', TP_num)
         self.log('Test_FP', FP_num)
+        self.log('Test_RMSE', count_rmse)
+        self.log('Test_MAE', count_mae)
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(), #using the optimizer setup from the original Faster R-CNN paper

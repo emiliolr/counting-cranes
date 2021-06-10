@@ -81,7 +81,7 @@ class BirdDataset(Dataset):
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
                 batch_of_tiles.append((img, target_dict, f'{img_name}_{i}', f'{img_name}_{i}'))
-        elif self.annotation_mode == 'regression':
+        elif self.annotation_mode == 'regression': #TODO : fill in these sections (alternate annotation types)!
             pass
         elif self.annotation_mode == 'points':
             pass
@@ -181,7 +181,7 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
       - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
     """
 
-    random_crop = A.Compose([A.RandomCrop(224, 244),
+    random_crop = A.Compose([A.RandomCrop(*tile_size),
                              ToTensorV2()],
                              bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'random')
     bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
 
     # images, targets, x_name, y_name = next(iter(bird_dataloader))
