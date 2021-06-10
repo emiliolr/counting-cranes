@@ -82,7 +82,13 @@ class BirdDataset(Dataset):
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
                 batch_of_tiles.append((img, target_dict, f'{img_name}_{i}', f'{img_name}_{i}'))
         elif self.annotation_mode == 'regression': #TODO : fill in these sections (alternate annotation types)!
-            pass
+            batch_of_tiles = []
+
+            for i, content in enumerate(zip(tiles, targets)):
+                img, target = content
+                count = get_regression(target['boxes'])
+
+                batch_of_tiles.append((img, count))
         elif self.annotation_mode == 'points':
             pass
 
@@ -109,11 +115,12 @@ def get_transforms(train = True):
 
     return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 
-def collate_w_tiles(batch):
+def collate_tiles_object_detection(batch):
 
     """
     A workaround to ensure that we get the right output for each batch in the DataLoader.
     For simplicity, use a batch size of 1 --> one parent image becomes any sub-images!
+    This version is for object detection!
     Inputs:
       - batch: a list of lists of tuples w/format [(image, target), ...]
     Outputs:
@@ -127,6 +134,24 @@ def collate_w_tiles(batch):
     annot_names = [t[3] for t in tiles]
 
     return images, targets, img_names, annot_names
+
+def collate_tiles_regression(batch):
+
+    """
+    A workaround to ensure that we get the right output for each batch in the DataLoader.
+    For simplicity, use a batch size of 1 --> one parent image becomes any sub-images!
+    This version is for object regression!
+    Inputs:
+      - batch: a list of lists of tuples w/format [(image, count), ...]
+    Outputs:
+      - A tuple w/the list of images and counts
+    """
+
+    tiles = batch[0] #grabbing the only element of the batch
+    images = [t[0] for t in tiles] #produces a list of tensors
+    counts = [t[1] for t in tiles] #produces a list of real numbers
+
+    return images, counts
 
 def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
 
@@ -215,22 +240,20 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'random')
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_w_tiles)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = True), tiling_method = 'random', annotation_mode = 'regression')
+    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_tiles_regression)
 
-    # images, targets, x_name, y_name = next(iter(bird_dataloader))
-    # print(x_name)
-    # print()
-    # print(y_name)
+    images, targets = next(iter(bird_dataloader))
+    print(targets)
 
-    num_degen = 0
-    for i, data in enumerate(bird_dataloader):
-      print('On image', i)
-      images, targets, _, _ = data
-      for d in targets:
-        for b in d['boxes'].tolist():
-          xmin, ymin, xmax, ymax = b
-          if xmin >= xmax or ymin >= ymax:
-            print('Invalid bbox:', b)
-            num_degen += 1
-    print(f'We have {num_degen} invalid bboxes')
+    # num_degen = 0
+    # for i, data in enumerate(bird_dataloader):
+    #   print('On image', i)
+    #   images, targets, _, _ = data
+    #   for d in targets:
+    #     for b in d['boxes'].tolist():
+    #       xmin, ymin, xmax, ymax = b
+    #       if xmin >= xmax or ymin >= ymax:
+    #         print('Invalid bbox:', b)
+    #         num_degen += 1
+    # print(f'We have {num_degen} invalid bboxes')

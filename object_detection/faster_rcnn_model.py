@@ -23,7 +23,7 @@ def get_faster_rcnn(num_classes = 2, **kwargs):
       - A PyTorch model
     """
 
-    #Loading a model pre-trained on COCO - increasing the maximum possible number of detections
+    #Loading a model pre-trained on COCO
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True, **kwargs)
 
     #Replace the classifier - get input features from the existing model pipeline and then replace!
