@@ -159,7 +159,7 @@ class FasterRCNNLightning(pl.LightningModule):
                                                                   patience = 5,
                                                                   min_lr = 0)
 
-        return {'optimizer' : optimizer, 'lr_scheduler' : lr_scheduler, 'monitor' : 'Validation_AP'}
+        return {'optimizer' : optimizer, 'lr_scheduler' : lr_scheduler, 'monitor' : 'Val_AP'}
 
 #TESTS:
 if __name__ == '__main__':
@@ -196,6 +196,5 @@ if __name__ == '__main__':
     subset = torch.utils.data.Subset(bird_dataset, [1])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_w_tiles)
 
-    # logger = CSVLogger('/Users/emiliolr/Desktop/TEST_logs', name = 'first_experiment')
     trainer = Trainer()
     trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
