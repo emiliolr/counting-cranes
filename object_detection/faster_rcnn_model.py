@@ -12,19 +12,19 @@ from evaluation.utils import from_dict_to_BoundingBox
 
 #TODO: see medium article if you want to use a different backbone
 # - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
-def get_faster_rcnn(num_classes = 2):
+def get_faster_rcnn(num_classes = 2, **kwargs):
 
     """
     A convenience function to get a pre-trained Faster R-CNN model w/a ResNet50 backbone.
     Inputs:
       - num_classes: the number of classes to predict
+      - **kwargs: to be passed on to the Faster R-CNN constructor (mostly hyperparameters)
     Outputs:
       - A PyTorch model
     """
 
     #Loading a model pre-trained on COCO - increasing the maximum possible number of detections
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True,
-                                                                 box_detections_per_img = 500)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True, **kwargs)
 
     #Replace the classifier - get input features from the existing model pipeline and then replace!
     in_features = model.roi_heads.box_predictor.cls_score.in_features
