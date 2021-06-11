@@ -4,6 +4,7 @@
   "code_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/counting-cranes",
   "model_saves_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/models_saves",
   "random_seed" : 1693,
+  "tile_size" : [200, 200],
   "faster_rcnn_params" : {
     "learning_rate" : 0.001,
     "batch_size" : 1,
