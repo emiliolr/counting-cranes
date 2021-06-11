@@ -12,19 +12,20 @@ from evaluation.utils import from_dict_to_BoundingBox
 
 #TODO: see medium article if you want to use a different backbone
 # - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
-def get_faster_rcnn(num_classes = 2, **kwargs):
+def get_faster_rcnn(num_classes = 2, pretrained = False, **kwargs):
 
     """
     A convenience function to get a pre-trained Faster R-CNN model w/a ResNet50 backbone.
     Inputs:
       - num_classes: the number of classes to predict
+      - pretrained: use Faster R-CNN pretrained on COCO?
       - **kwargs: to be passed on to the Faster R-CNN constructor (mostly hyperparameters)
     Outputs:
       - A PyTorch model
     """
 
     #Loading a model pre-trained on COCO
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = True, **kwargs)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = pretrained, **kwargs)
 
     #Replace the classifier - get input features from the existing model pipeline and then replace!
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -139,7 +140,7 @@ class FasterRCNNLightning(pl.LightningModule):
         TP_num = per_class['total TP']
         FP_num = per_class['total FP']
 
-        count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are based on parent image counts!
+        count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are based on parent image counts - slightly inflated due to tiling (same bird appears in many tiles)...
         count_mae = mae(gt_counts, pred_counts)
 
         self.log('Test_AP', AP)
@@ -193,8 +194,11 @@ if __name__ == '__main__':
     from bird_dataset import *
 
     bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
-    subset = torch.utils.data.Subset(bird_dataset, [1])
-    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_w_tiles)
+    subset = torch.utils.data.Subset(bird_dataset, [1, 5])
+    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
-    trainer = Trainer()
-    trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
+    annot_name = os.path.join(DATA_FP, 'annotations', subset[1][2][2][ : -2] + '.xml')
+    print(get_regression(get_bboxes(annot_name)))
+
+    # trainer = Trainer()
+    # trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
