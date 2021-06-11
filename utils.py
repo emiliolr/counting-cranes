@@ -102,7 +102,8 @@ def visualize_points(image_fp, xml_fp):
     """
 
     img = Image.open(image_fp)
-    points = [tuple(coord) for coord in get_points(xml_fp)]
+    bboxes = get_bboxes(xml_fp)
+    points = [tuple(coord) for coord in get_points(bboxes)]
 
     draw = ImageDraw.Draw(img)
     draw.point(points, fill = 'red')

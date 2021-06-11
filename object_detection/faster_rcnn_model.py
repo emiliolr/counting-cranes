@@ -121,6 +121,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
+    #TODO: might want to switch to computing count metrics at the tile level... for some reason, feels like a better idea!
     def test_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
         gt_counts = [len(gt) for gt in gt_boxes]
