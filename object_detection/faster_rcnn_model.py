@@ -9,6 +9,7 @@ from sklearn.metrics import mean_absolute_error as mae
 from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
 from evaluation.enumerators import MethodAveragePrecision
 from evaluation.utils import from_dict_to_BoundingBox
+from evaluation.misc_metrics import mean_percent_error as mpe
 
 #TODO: see this medium article if you want to use a different backbone
 # - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
@@ -101,12 +102,14 @@ class FasterRCNNLightning(pl.LightningModule):
         #Logging key metrics
         count_rmse = mse(gt_counts, pred_counts, squared = False)
         count_mae = mae(gt_counts, pred_counts)
+        count_mpe = mpe(gt_counts, pred_counts)
 
         self.log('Val_AP', AP)
         self.log('Val_TP', TP_num)
         self.log('Val_FP', FP_num)
         self.log('Val_RMSE', count_rmse)
         self.log('Val_MAE', count_mae)
+        self.log('Val_MPE', count_mpe)
 
     def test_step(self, batch, batch_idx):
         X, y, X_name, y_name = batch
@@ -121,7 +124,6 @@ class FasterRCNNLightning(pl.LightningModule):
 
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
-    #TODO: might want to switch to computing count metrics at the tile level... for some reason, feels like a better idea!
     def test_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
         gt_counts = [len(gt) for gt in gt_boxes]
@@ -143,12 +145,14 @@ class FasterRCNNLightning(pl.LightningModule):
 
         count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are based on parent image counts - slightly inflated due to tiling (same bird appears in many tiles)...
         count_mae = mae(gt_counts, pred_counts)
+        count_mpe = mpe(gt_counts, pred_counts)
 
         self.log('Test_AP', AP)
         self.log('Test_TP', TP_num)
         self.log('Test_FP', FP_num)
         self.log('Test_RMSE', count_rmse)
         self.log('Test_MAE', count_mae)
+        self.log('Test_MPE', count_mpe)
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(), #using the optimizer setup from the original Faster R-CNN paper
@@ -161,7 +165,7 @@ class FasterRCNNLightning(pl.LightningModule):
                                                                   patience = 5,
                                                                   min_lr = 0)
 
-        return {'optimizer' : optimizer, 'lr_scheduler' : lr_scheduler, 'monitor' : 'Val_AP'}
+        return {'optimizer' : optimizer, 'lr_scheduler' : lr_scheduler, 'monitor' : 'Val_MAE'}
 
 #TESTS:
 if __name__ == '__main__':
@@ -198,8 +202,8 @@ if __name__ == '__main__':
     subset = torch.utils.data.Subset(bird_dataset, [1, 5])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
-    annot_name = os.path.join(DATA_FP, 'annotations', subset[1][2][2][ : -2] + '.xml')
-    print(get_regression(get_bboxes(annot_name)))
+    # annot_name = os.path.join(DATA_FP, 'annotations', subset[1][2][2][ : -2] + '.xml')
+    # print(get_regression(get_bboxes(annot_name)))
 
-    # trainer = Trainer()
-    # trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
+    trainer = Trainer()
+    trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)

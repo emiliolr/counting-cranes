@@ -133,6 +133,7 @@ def collate_tiles_object_detection(batch):
       - A tuple w/the list of images, list of target dictionaries, and list of names for images/annotations
     """
 
+    assert len(batch) == 1, 'Use a batch size of 1'
     tiles = batch[0] #grabbing the only element of the batch
     images = [t[0] for t in tiles] #produces a list of tensors
     targets = [t[1] for t in tiles] #produces a list of dictionaries
@@ -153,6 +154,7 @@ def collate_tiles_regression(batch):
       - A tuple w/the list of images and list of counts
     """
 
+    assert len(batch) == 1, 'Use a batch size of 1'
     tiles = batch[0] #grabbing the only element of the batch
     images = [t[0] for t in tiles] #produces a list of tensors
     counts = [t[1] for t in tiles] #produces a list of real numbers
@@ -171,6 +173,7 @@ def collate_tiles_density(batch):
       - A tuple w/the list of images and list of densities
     """
 
+    assert len(batch) == 1, 'Use a batch size of 1'
     tiles = batch[0] #grabbing the only element of the batch
     images = [t[0] for t in tiles] #produces a list of tensors
     densities = [t[1] for t in tiles] #produces a list of tensors
