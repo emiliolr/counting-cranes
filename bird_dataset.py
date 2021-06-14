@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 
 from utils import *
+from density_estimation.generate_density import *
 
 import os
 from PIL import Image
@@ -9,7 +10,6 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
 
-#TODO: we will have to do some special things to hold out 2018 data for evaluation of overlap
 class BirdDataset(Dataset):
 
     """
@@ -81,16 +81,22 @@ class BirdDataset(Dataset):
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
                 batch_of_tiles.append((img, target_dict, f'{img_name}_{i}', f'{img_name}_{i}'))
-        elif self.annotation_mode == 'regression': #TODO : fill in these sections (alternate annotation types)!
+        elif self.annotation_mode == 'regression':
             batch_of_tiles = []
 
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
-                count = get_regression(target['boxes'])
+                count = get_regression(target['boxes']) #turning bbox annotations into an integer count
 
                 batch_of_tiles.append((img, count))
         elif self.annotation_mode == 'points':
-            pass
+            batch_of_tiles = []
+
+            for i, content in enumerate(zip(tiles, targets)):
+                img, target = content
+                density = torch.as_tensor(density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5), dtype = torch.float32)
+
+                batch_of_tiles.append((img, density))
 
         return batch_of_tiles
 
@@ -124,7 +130,7 @@ def collate_tiles_object_detection(batch):
     Inputs:
       - batch: a list of lists of tuples w/format [(image, target), ...]
     Outputs:
-      - A tuple w/the list of images, target dictionaries, and names for images/annotations
+      - A tuple w/the list of images, list of target dictionaries, and list of names for images/annotations
     """
 
     tiles = batch[0] #grabbing the only element of the batch
@@ -144,7 +150,7 @@ def collate_tiles_regression(batch):
     Inputs:
       - batch: a list of lists of tuples w/format [(image, count), ...]
     Outputs:
-      - A tuple w/the list of images and counts
+      - A tuple w/the list of images and list of counts
     """
 
     tiles = batch[0] #grabbing the only element of the batch
@@ -152,6 +158,24 @@ def collate_tiles_regression(batch):
     counts = [t[1] for t in tiles] #produces a list of real numbers
 
     return images, counts
+
+def collate_tiles_density(batch):
+
+    """
+    A workaround to ensure that we get the right output for each batch in the DataLoader.
+    For simplicity, use a batch size of 1 --> one parent image becomes any sub-images!
+    This version is for object density!
+    Inputs:
+      - batch: a list of lists of tuples w/format [(image, density), ...]
+    Outputs:
+      - A tuple w/the list of images and list of densities
+    """
+
+    tiles = batch[0] #grabbing the only element of the batch
+    images = [t[0] for t in tiles] #produces a list of tensors
+    densities = [t[1] for t in tiles] #produces a list of tensors
+
+    return images, densities
 
 def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
 

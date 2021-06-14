@@ -10,7 +10,7 @@ from evaluation.pascal_voc_evaluator import get_pascalvoc_metrics
 from evaluation.enumerators import MethodAveragePrecision
 from evaluation.utils import from_dict_to_BoundingBox
 
-#TODO: see medium article if you want to use a different backbone
+#TODO: see this medium article if you want to use a different backbone
 # - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
 def get_faster_rcnn(num_classes = 2, pretrained = False, **kwargs):
 
@@ -81,7 +81,7 @@ class FasterRCNNLightning(pl.LightningModule):
 
     def validation_epoch_end(self, outs):
         gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
-        gt_counts = [len(gt) for gt in gt_boxes] #parent image ground truth counts
+        gt_counts = [len(gt) for gt in gt_boxes] #parent image ground truth counts... remember: a single batch is one (tiled) parent image!
         gt_boxes = list(chain(*gt_boxes))
 
         pred_boxes = [out['pred_boxes'] for out in outs] #predicted

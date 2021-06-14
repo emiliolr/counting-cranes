@@ -126,9 +126,6 @@ def purge_invalid_bboxes(list_of_bboxes):
 
         if xmin < xmax and ymin < ymax: #conditions for a valid bbox!
             final_bboxes.append(box)
-        else:
-            # print('purged', box)
-            pass
 
     return final_bboxes
 
@@ -203,4 +200,8 @@ if __name__ == '__main__':
     config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
     DATA_FP = config['data_filepath_local']
 
-    print(bbox_dataset_statistics(DATA_FP))
+    # print(bbox_dataset_statistics(DATA_FP))
+
+    #TESTING get_points:
+    single_annot_fp = '/Users/emiliolr/Desktop/Conservation Research/final_dataset/annotations/20180321_223204_097_2806.xml'
+    get_points(get_bboxes(single_annot_fp))
