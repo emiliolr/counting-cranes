@@ -2,8 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 from torchvision import models
-from utils import save_net,load_net
-from cbam_model import ChannelAttention,SpatialAttention
+from cbam_model import ChannelAttention, SpatialAttention
 from deform_conv import DeformConv2D
 
 
@@ -124,5 +123,3 @@ def make_layers(cfg, in_channels = 3,batch_norm=False,dilation = False):
                 layers += [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
     return nn.Sequential(*layers)
-
-

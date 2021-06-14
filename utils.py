@@ -4,6 +4,7 @@ import numpy as np
 from torch import as_tensor
 import os
 import numpy as np
+from itertools import chain
 
 def get_bboxes(xml_fp):
 
@@ -140,14 +141,29 @@ def bbox_dataset_statistics(root_dir):
     """
 
     annotation_fps = sorted(os.listdir(os.path.join(root_dir, 'annotations')))
+    all_areas = []
+    all_bbox_cts = []
 
     for fp in annotation_fps:
         annotation_fp = os.path.join(root_dir, 'annotations', fp)
         bboxes = get_bboxes(annotation_fp)
-
         areas = [(box[3] - box[1]) * (box[2] - box[0]) for box in bboxes]
 
-        return {'avg_area' : np.mean(areas), 'min_area' : np.min(areas), 'max_area' : np.max(areas)}
+        all_areas.append(areas) #the pixel areas for bird annotations in this image
+        all_bbox_cts.append(len(bboxes)) #the number of birds in this image
+
+    all_areas = list(chain(*all_areas))
+
+    return_dict = {'avg_area' : np.mean(all_areas),
+                   'min_area' : np.min(all_areas),
+                   'max_area' : np.max(all_areas),
+                   'avg_num_bboxes' : np.mean(all_bbox_cts),
+                   'min_num_bboxes' : np.min(all_bbox_cts),
+                   'max_num_bboxes' : np.max(all_bbox_cts),
+                   'total_num_bboxes' : len(all_areas),
+                   'num_annotated_imgs' : len(all_bbox_cts)}
+
+    return return_dict
 
 def pad_image(image, sides):
 
@@ -200,8 +216,8 @@ if __name__ == '__main__':
     config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
     DATA_FP = config['data_filepath_local']
 
-    # print(bbox_dataset_statistics(DATA_FP))
+    print(bbox_dataset_statistics(DATA_FP))
 
     #TESTING get_points:
     single_annot_fp = '/Users/emiliolr/Desktop/Conservation Research/final_dataset/annotations/20180321_223204_097_2806.xml'
-    get_points(get_bboxes(single_annot_fp))
+    # get_points(get_bboxes(single_annot_fp))

@@ -5,7 +5,6 @@ import warnings
 
 from model import ASPDNet
 
-
 from utils import save_checkpoint
 
 import torch
@@ -228,4 +227,4 @@ class AverageMeter(object):
 
 
 if __name__ == '__main__':
-    main()        
+    main()
