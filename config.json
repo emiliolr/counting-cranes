@@ -17,5 +17,10 @@
       "box_nms_thresh" : 0.3,
       "rpn_nms_thresh" : 0.5
     }
+  },
+  "ASPDNet_params" : {
+    "learning_rate" : 0.00001,
+    "momentum" : 0.9,
+    "weight_decay" : 0.005
   }
 }
