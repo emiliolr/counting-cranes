@@ -156,9 +156,9 @@ class FasterRCNNLightning(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(), #using the optimizer setup from the original Faster R-CNN paper
-                               lr = self.learning_rate,
-                               momentum = 0.9,
-                               weight_decay = 0.005)
+                                    lr = self.learning_rate,
+                                    momentum = 0.9,
+                                    weight_decay = 0.005)
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                                   mode = 'min',
                                                                   factor = 0.5,

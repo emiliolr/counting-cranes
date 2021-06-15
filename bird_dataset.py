@@ -94,6 +94,7 @@ class BirdDataset(Dataset):
 
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
+                print(len(target['boxes']))
                 density = torch.as_tensor(density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5), dtype = torch.float32)
 
                 batch_of_tiles.append((img, density))
@@ -155,9 +156,9 @@ def collate_tiles_regression(batch):
     """
 
     assert len(batch) == 1, 'Use a batch size of 1'
-    tiles = batch[0] #grabbing the only element of the batch
-    images = [t[0] for t in tiles] #produces a list of tensors
-    counts = [t[1] for t in tiles] #produces a list of real numbers
+    tiles = batch[0]
+    images = [t[0] for t in tiles]
+    counts = [t[1] for t in tiles]
 
     return images, counts
 
@@ -174,9 +175,9 @@ def collate_tiles_density(batch):
     """
 
     assert len(batch) == 1, 'Use a batch size of 1'
-    tiles = batch[0] #grabbing the only element of the batch
-    images = [t[0] for t in tiles] #produces a list of tensors
-    densities = [t[1] for t in tiles] #produces a list of tensors
+    tiles = batch[0]
+    images = torch.stack([t[0] for t in tiles])
+    densities = torch.stack([t[1] for t in tiles])
 
     return images, densities
 
@@ -267,11 +268,11 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = True), tiling_method = 'random', annotation_mode = 'regression')
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_tiles_regression)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = True), tiling_method = 'random', annotation_mode = 'points')
+    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_tiles_density)
 
     images, targets = next(iter(bird_dataloader))
-    print(targets)
+    print(targets.shape)
 
     # num_degen = 0
     # for i, data in enumerate(bird_dataloader):

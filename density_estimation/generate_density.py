@@ -90,6 +90,6 @@ if __name__ == '__main__':
     single_img_fp = '/Users/emiliolr/Desktop/Conservation Research/final_dataset/images/FLIR2_20210321_201851_358_2510.TIF'
 
     bboxes = get_bboxes(single_annot_fp)
-    image = np.array(Image.open(single_img_fp))
+    image = np.moveaxis(np.array(Image.open(single_img_fp)), -1, 0) #making this look like the torch tensors...
     density = density_from_bboxes(bboxes, image, filter_type = 'fixed', sigma = 1.5)
     print(density.shape)
