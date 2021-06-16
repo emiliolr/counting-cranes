@@ -9,6 +9,7 @@ from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
+import cv2
 
 class BirdDataset(Dataset):
 
@@ -65,9 +66,9 @@ class BirdDataset(Dataset):
 
         #Tiling up the parent image using the desired tiling method
         if self.tiling_method == 'random':
-            tiles, targets = random_tiling(image, bboxes, labels, self.num_tiles, self.max_neg_examples, self.tile_size)
+            tiles, targets = random_tiling(image, bboxes, labels, self.num_tiles, self.max_neg_examples, self.tile_size, normalize = True if self.annotation_mode == 'points' else False)
         elif self.tiling_method == 'w_o_overlap':
-            tiles, targets = tiling_w_o_overlap(image, bboxes, labels, self.tile_size)
+            tiles, targets = tiling_w_o_overlap(image, bboxes, labels, self.tile_size, normalize = True if self.annotation_mode == 'points' else False)
         elif self.tiling_method == 'w_overlap':
             pass
 
@@ -77,6 +78,7 @@ class BirdDataset(Dataset):
             img_name = self.image_fps[index].replace('.TIF', '').replace('.tif', '') #this is necessary for calculating metrics...
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
+                img = img / 255 #getting into [0, 1] range rather than [0, 255]
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
@@ -94,8 +96,9 @@ class BirdDataset(Dataset):
 
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
-                print(len(target['boxes']))
-                density = torch.as_tensor(density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5), dtype = torch.float32)
+                density = density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5)
+                density = cv2.resize(density, (density.shape[0] // 8, density.shape[1] // 8), interpolation = cv2.INTER_CUBIC) * 64 #this is required to ensure that the GT matches the pred density in shape... unfortunately, changes GT count so error is accumulated here!
+                density = torch.as_tensor(density, dtype = torch.float32)
 
                 batch_of_tiles.append((img, density))
 
@@ -111,6 +114,7 @@ def get_transforms(train = True):
     NOTE: PyTorch's Faster R-CNN impelementation handles normalization.
     Inputs:
       - train: return training or testing transforms?
+      - method: either object_detection or density_estimation
     Outputs:
       - A chain of composed albumentations transformations
     """
@@ -181,7 +185,7 @@ def collate_tiles_density(batch):
 
     return images, densities
 
-def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
+def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224), normalize = False):
 
     """
     A function to perform tiling w/o overlap on parent images.
@@ -190,6 +194,7 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
       - bboxes: a list of lists containing all bboxes in the parent image
       - labels: a list of the class labels for bboxes in the parent image
       - tile_size: the size of the tile, in format (width, height)
+      - normalize: should we normalize the tiles?
     Outputs:
       - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
     """
@@ -203,10 +208,11 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
     for h in range(0, (image_height + 1) - tile_height, tile_height):
         for w in range(0, (image_width + 1) - tile_width, tile_width):
             coords = (w, h, w + tile_width, h + tile_height)
-            transform = A.Compose([A.Crop(*coords),
-                                   ToTensorV2()],
-                                   bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
-            t = transform(image = np.array(padded_parent), bboxes = bboxes, class_labels = labels)
+            transform_list = [A.Crop(*coords), ToTensorV2()]
+            if normalize:
+                transform_list.insert(1, A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]))
+            transforms = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+            t = transforms(image = np.array(padded_parent), bboxes = bboxes, class_labels = labels)
 
             if len(t['bboxes']) == 0:
                 new_bboxes = torch.empty((0, 4), dtype = torch.float32)
@@ -214,12 +220,12 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224)):
                 new_bboxes = purge_invalid_bboxes(t['bboxes'])
             target_dict = {'boxes' : new_bboxes, 'labels' : np.ones((len(new_bboxes), ))}
 
-            tiles.append(t['image'] / 255)
+            tiles.append(t['image'])
             targets.append(target_dict)
 
     return tiles, targets
 
-def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, tile_size = (224, 224)):
+def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, tile_size = (224, 224), normalize = False):
 
     """
     A function to perform random tiling on parent images.
@@ -230,13 +236,14 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
       - num_tiles: the desired number of random tiles
       - max_neg_examples: the maximum negative examples (no birds in the tile) to keep
       - tile_size: the size of the tile, in format (width, height)
+      - normalize: should we normalize the tiles?
     Outputs:
       - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
     """
-
-    random_crop = A.Compose([A.RandomCrop(*tile_size),
-                             ToTensorV2()],
-                             bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+    transform_list = [A.RandomCrop(*tile_size), ToTensorV2()]
+    if normalize:
+        transform_list.insert(1, A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]))
+    random_crop = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 
     tiles = []
     targets = []
@@ -254,7 +261,7 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
             new_bboxes = purge_invalid_bboxes(t['bboxes']) #making sure to get rid of any invalid bboxes here
         target_dict = {'boxes' : new_bboxes, 'labels' : np.ones((len(new_bboxes), ))}
 
-        tiles.append(t['image'] / 255) #getting pixels into [0, 1] range rather than [0, 255]
+        tiles.append(t['image'])
         targets.append(target_dict)
 
     return tiles, targets
@@ -268,11 +275,11 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = True), tiling_method = 'random', annotation_mode = 'points')
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = True, collate_fn = collate_tiles_density)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(True), tiling_method = 'w_o_overlap', annotation_mode = 'bboxes')
+    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
-    images, targets = next(iter(bird_dataloader))
-    print(targets.shape)
+    images, targets, _, _ = next(iter(bird_dataloader))
+    print(images[0])
 
     # num_degen = 0
     # for i, data in enumerate(bird_dataloader):

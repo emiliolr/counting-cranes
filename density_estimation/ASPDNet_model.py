@@ -14,7 +14,7 @@ class ASPDNetLightning(pl.LightningModule):
     """
 
     def __init__(self, model, lr):
-        super.__init__()
+        super().__init__()
 
         self.model = model
         self.learning_rate = lr
@@ -22,7 +22,6 @@ class ASPDNetLightning(pl.LightningModule):
     def forward(self, X):
         return self.model(X)
 
-    #TODO: we need to downsample GT densities for loss calculations to work correctly!
     def training_step(self, batch, batch_idx):
         X, y = batch
 
@@ -60,10 +59,9 @@ if __name__ == '__main__':
     import sys
     sys.path.append('/Users/emiliolr/Desktop/counting-cranes/density_estimation/ASPDNet')
     from ASPDNet.model import ASPDNet
-    from torchsummary import summary
 
     model = ASPDNet()
-    # summary(model, (3, 200, 200))
-    toy_img = torch.randn(5, 3, 400, 400)
-    pred = model(toy_img)
+    pl_model = ASPDNetLightning(model, 1e-5)
+    toy_img = torch.randn(2, 3, 200, 200)
+    pred = pl_model(toy_img)
     print(pred.shape)
