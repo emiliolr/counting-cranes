@@ -1,17 +1,10 @@
 import pytorch_lightning as pl
 import torch.nn as nn
 import torch
-
-import json
-config = json.load(open('/content/drive/MyDrive/Conservation Research/Code/counting-cranes/config.json', 'r')) #TODO: change this to local FP if you need to test locally..
-CODE_FP = config['code_filepath_local']
-import os
-import sys
-sys.path.append(os.path.join(CODE_FP, 'object_detection'))
-from evaluation.misc_metrics import mean_percent_error as mpe
-
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
+
+from evaluation.misc_metrics import mean_percent_error as mpe
 
 class ASPDNetLightning(pl.LightningModule):
 
@@ -42,10 +35,11 @@ class ASPDNetLightning(pl.LightningModule):
         return loss
 
     def test_step(self, batch, batch_idx):
-        X, y, gt_count = batch #1 batch == 1 parent image!
+        X, y, tile_counts = batch #1 batch == 1 parent image!
 
         pred = self.model(X) #a bunch of densities
-        pred_count = pred.sum() #predicted count over all tiles (so, this is the pred parent image count)
+        pred_count = int(pred.sum()) #predicted count over all tiles (so, this is the pred parent image count)
+        gt_count = sum(tile_counts) #true count over all tiles
 
         return {'pred_count' : pred_count, 'gt_count' : gt_count}
 
@@ -94,13 +88,16 @@ if __name__ == '__main__':
                                tiling_method = 'w_o_overlap',
                                annotation_mode = 'points',
                                tile_size = (200, 200))
-    bird_subset = torch.utils.data.Subset(bird_dataset, [0, 1, 2])
+    bird_subset = torch.utils.data.Subset(bird_dataset, [0, 1])
     dataloader = DataLoader(bird_subset,
                             batch_size = 1,
                             shuffle = True,
                             collate_fn = collate_tiles_density)
 
-    pl_model = ASPDNetLightning(ASPDNet(), lr = 1e-5)
+    save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
+    model = ASPDNet()
+    model.load_state_dict(torch.load(save_name))
+    pl_model = ASPDNetLightning(model = model, lr = 1e-5)
 
-    trainer = Trainer(max_epochs = 2)
-    trainer.fit(pl_model, train_dataloader = dataloader)
+    # trainer = Trainer()
+    # trainer.test(pl_model, test_dataloaders = dataloader)
