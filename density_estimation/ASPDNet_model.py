@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 
 import json
-config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
+config = json.load(open('/content/drive/MyDrive/Conservation Research/Code/counting-cranes/config.json', 'r')) #TODO: change this to local FP if you need to test locally..
 CODE_FP = config['code_filepath_local']
 import os
 import sys
