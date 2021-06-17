@@ -78,7 +78,6 @@ class BirdDataset(Dataset):
             img_name = self.image_fps[index].replace('.TIF', '').replace('.tif', '') #this is necessary for calculating metrics...
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
-                img = img / 255 #getting into [0, 1] range rather than [0, 255]
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
@@ -86,7 +85,7 @@ class BirdDataset(Dataset):
         elif self.annotation_mode == 'regression':
             batch_of_tiles = []
 
-            for i, content in enumerate(zip(tiles, targets)):
+            for content in zip(tiles, targets):
                 img, target = content
                 count = get_regression(target['boxes']) #turning bbox annotations into an integer count
 
@@ -94,13 +93,14 @@ class BirdDataset(Dataset):
         elif self.annotation_mode == 'points':
             batch_of_tiles = []
 
-            for i, content in enumerate(zip(tiles, targets)):
+            for content in zip(tiles, targets):
                 img, target = content
                 density = density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5)
                 density = cv2.resize(density, (density.shape[0] // 8, density.shape[1] // 8), interpolation = cv2.INTER_CUBIC) * 64 #this is required to ensure that the GT matches the pred density in shape... unfortunately, changes GT count so error is accumulated here!
                 density = torch.as_tensor(density, dtype = torch.float32)
+                count = get_regression(target['boxes'])
 
-                batch_of_tiles.append((img, density))
+                batch_of_tiles.append((img, density, count))
 
         return batch_of_tiles
 
@@ -182,8 +182,9 @@ def collate_tiles_density(batch):
     tiles = batch[0]
     images = torch.stack([t[0] for t in tiles])
     densities = torch.stack([t[1] for t in tiles])
+    counts = [t[2] for t in tiles]
 
-    return images, densities
+    return images, densities, counts
 
 def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224), normalize = False):
 
@@ -202,15 +203,14 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224), nor
     padded_parent = pad_parent_for_tiles(parent_image, tile_size)
     tile_width, tile_height = tile_size
     image_width, image_height = padded_parent.size
+    normalization = A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], max_pixel_value = 1)
 
     tiles = []
     targets = []
     for h in range(0, (image_height + 1) - tile_height, tile_height):
         for w in range(0, (image_width + 1) - tile_width, tile_width):
             coords = (w, h, w + tile_width, h + tile_height)
-            transform_list = [A.Crop(*coords), ToTensorV2()]
-            if normalize:
-                transform_list.insert(1, A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]))
+            transform_list = [A.Crop(*coords)]
             transforms = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
             t = transforms(image = np.array(padded_parent), bboxes = bboxes, class_labels = labels)
 
@@ -220,7 +220,10 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224), nor
                 new_bboxes = purge_invalid_bboxes(t['bboxes'])
             target_dict = {'boxes' : new_bboxes, 'labels' : np.ones((len(new_bboxes), ))}
 
-            tiles.append(t['image'])
+            image = t['image'] / 255
+            if normalize:
+                image = normalization(image = image)['image']
+            tiles.append(ToTensorV2()(image = image)['image'])
             targets.append(target_dict)
 
     return tiles, targets
@@ -240,10 +243,9 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
     Outputs:
       - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
     """
-    transform_list = [A.RandomCrop(*tile_size), ToTensorV2()]
-    if normalize:
-        transform_list.insert(1, A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]))
+    transform_list = [A.RandomCrop(*tile_size)]
     random_crop = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+    normalization = A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], max_pixel_value = 1) #max pixel val is 1 here b/c images will be rescaled before normalization!
 
     tiles = []
     targets = []
@@ -261,7 +263,10 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
             new_bboxes = purge_invalid_bboxes(t['bboxes']) #making sure to get rid of any invalid bboxes here
         target_dict = {'boxes' : new_bboxes, 'labels' : np.ones((len(new_bboxes), ))}
 
-        tiles.append(t['image'])
+        image = t['image'] / 255 #re-scaling into [0, 1] range
+        if normalize:
+            image = normalization(image = image)['image'] #normalization using ImageNet stats... not necessary for object detection
+        tiles.append(ToTensorV2()(image = image)['image'])
         targets.append(target_dict)
 
     return tiles, targets
@@ -275,11 +280,13 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(True), tiling_method = 'w_o_overlap', annotation_mode = 'bboxes')
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(False), tiling_method = 'w_o_overlap', annotation_mode = 'points')
+    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_density)
 
-    images, targets, _, _ = next(iter(bird_dataloader))
-    print(images[0])
+    images, targets, counts = next(iter(bird_dataloader))
+    print(f'Actual count is {sum(counts)} while count after resizing density is {sum([int(t.sum()) for t in targets])}')
+    # print([int(t.sum()) for t in targets])
+    # print(counts)
 
     # num_degen = 0
     # for i, data in enumerate(bird_dataloader):

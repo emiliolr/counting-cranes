@@ -202,8 +202,5 @@ if __name__ == '__main__':
     subset = torch.utils.data.Subset(bird_dataset, [1, 5])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
-    # annot_name = os.path.join(DATA_FP, 'annotations', subset[1][2][2][ : -2] + '.xml')
-    # print(get_regression(get_bboxes(annot_name)))
-
     trainer = Trainer()
     trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
