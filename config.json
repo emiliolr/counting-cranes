@@ -19,6 +19,7 @@
     }
   },
   "ASPDNet_params" : {
-    "learning_rate" : 0.00001
+    "learning_rate" : 0.00001,
+    "batch_size" : 1
   }
 }

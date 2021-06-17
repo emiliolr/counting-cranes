@@ -1,5 +1,5 @@
 .DS_store
 .ipynb_checkpoints
 __pycache__
-initial_faster_rcnn.pth
+initial_*.pth
 lightning_logs
