@@ -12,9 +12,6 @@
     "iou_threshold_EVALUATION" : 0.3,
     "constructor_hyperparams" : {
       "box_detections_per_img" : 500,
-      "rpn_fg_iou_thresh" : 0.5,
-      "rpn_batch_size_per_image" : 512,
-      "box_batch_size_per_image" : 1024,
       "box_nms_thresh" : 0.3
     }
   },

@@ -24,21 +24,45 @@ class ASPDNetLightning(pl.LightningModule):
         self.learning_rate = lr
 
     def forward(self, X):
-        return self.model(X)
+        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #prediction is one tile at a time, like in the source training script
+
+        return preds
 
     def training_step(self, batch, batch_idx):
         X, y, _ = batch
 
-        pred = self.model(X).squeeze(1) #the pred densities for the inputs
-        loss = nn.functional.mse_loss(pred, y, reduction = 'sum') #this MSE is a different than in the metrics... looks at per-pixel density mismatches between GT and pred
+        #  here, we train one tile at a time
+        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #the pred densities for the input images
+        loss = nn.functional.mse_loss(preds, y, reduction = 'sum') #this MSE is a different than in the metrics... looks at per-pixel density mismatches between GT and pred
 
         return loss
+
+    def validation_step(self, batch, batch_idx):
+        X, y, tile_counts = batch
+
+        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X])
+        pred_count = int(preds.sum())
+        gt_count = sum(tile_counts)
+
+        return {'pred_count' : pred_count, 'gt_count' : gt_count}
+
+    def validation_epoch_end(self, outs):
+        pred_counts = [out['pred_count'] for out in outs]
+        gt_counts = [out['gt_count'] for out in outs]
+
+        count_rmse = mse(gt_counts, pred_counts, squared = False)
+        count_mae = mae(gt_counts, pred_counts)
+        count_mpe = mpe(gt_counts, pred_counts)
+
+        self.log('Val_RMSE', count_rmse)
+        self.log('Val_MAE', count_mae)
+        self.log('Val_MPE', count_mpe)
 
     def test_step(self, batch, batch_idx):
         X, y, tile_counts = batch #1 batch == 1 parent image!
 
-        pred = self.model(X) #a bunch of densities
-        pred_count = int(pred.sum()) #predicted count over all tiles (so, this is the pred parent image count)
+        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #a bunch of densities
+        pred_count = int(preds.sum()) #predicted count over all tiles (so, this is the pred parent image count)
         gt_count = sum(tile_counts) #true count over all tiles
 
         return {'pred_count' : pred_count, 'gt_count' : gt_count}
@@ -47,7 +71,7 @@ class ASPDNetLightning(pl.LightningModule):
         pred_counts = [out['pred_count'] for out in outs] #one value here for each parent image
         gt_counts = [out['gt_count'] for out in outs]
 
-        count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are based on parent image counts - slightly inflated due to tiling (same bird appears in many tiles)...
+        count_rmse = mse(gt_counts, pred_counts, squared = False) #these count metrics are at the parent image level
         count_mae = mae(gt_counts, pred_counts)
         count_mpe = mpe(gt_counts, pred_counts)
 
@@ -94,10 +118,16 @@ if __name__ == '__main__':
                             shuffle = True,
                             collate_fn = collate_tiles_density)
 
-    save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
+    # save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
     model = ASPDNet()
-    model.load_state_dict(torch.load(save_name))
+    # model.load_state_dict(torch.load(save_name))
     pl_model = ASPDNetLightning(model = model, lr = 1e-5)
+    # tiles = torch.randn(5, 3, 200, 200)
+    # preds = pl_model(tiles)
+    # print(preds.shape, type(preds))
+    # for p in preds:
+    #     print(p.sum().item())
 
-    # trainer = Trainer()
+    trainer = Trainer(max_epochs = 1)
+    trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
     # trainer.test(pl_model, test_dataloaders = dataloader)
