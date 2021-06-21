@@ -78,7 +78,7 @@ class BirdDataset(Dataset):
             img_name = self.image_fps[index].replace('.TIF', '').replace('.tif', '') #this is necessary for calculating metrics...
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
-                img = img.float()
+                img = img.float() #making it float32 rather than float64
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
@@ -122,8 +122,7 @@ def get_transforms(train = True):
 
     transforms = []
     if train: #currently, we aren't using any transforms for validation/testing!
-        transforms.append(A.HorizontalFlip(p = 0.5))
-        transforms.append(A.VerticalFlip(p = 0.5))
+        transforms.append(A.RandomBrightnessContrast(p = 0.5))
 
     return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 

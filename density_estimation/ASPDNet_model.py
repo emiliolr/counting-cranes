@@ -24,15 +24,15 @@ class ASPDNetLightning(pl.LightningModule):
         self.learning_rate = lr
 
     def forward(self, X):
-        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #prediction is one tile at a time, like in the source training script
+        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #forward pass is one tile at a time, like in the source training script
 
         return preds
 
     def training_step(self, batch, batch_idx):
         X, y, _ = batch
 
-        #  here, we train one tile at a time
-        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #the pred densities for the input images
+        #here, we train one tile at a time
+        preds = self.forward(X) #the pred densities for the input images
         loss = nn.functional.mse_loss(preds, y, reduction = 'sum') #this MSE is a different than in the metrics... looks at per-pixel density mismatches between GT and pred
 
         return loss
@@ -40,7 +40,7 @@ class ASPDNetLightning(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         X, y, tile_counts = batch
 
-        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X])
+        preds = self.forward(X)
         pred_count = int(preds.sum())
         gt_count = sum(tile_counts)
 
@@ -61,7 +61,7 @@ class ASPDNetLightning(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         X, y, tile_counts = batch #1 batch == 1 parent image!
 
-        preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #a bunch of densities
+        preds = self.forward(X) #a bunch of densities
         pred_count = int(preds.sum()) #predicted count over all tiles (so, this is the pred parent image count)
         gt_count = sum(tile_counts) #true count over all tiles
 
@@ -118,14 +118,16 @@ if __name__ == '__main__':
                             shuffle = True,
                             collate_fn = collate_tiles_density)
 
-    # save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
+    save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
     model = ASPDNet()
     # model.load_state_dict(torch.load(save_name))
     pl_model = ASPDNetLightning(model = model, lr = 1e-5)
     # tiles = torch.randn(5, 3, 200, 200)
-    # preds = pl_model(tiles)
-    # print(preds.shape, type(preds))
-    # for p in preds:
+    # tiles, targets, counts = next(iter(dataloader))
+    # pl_model.model.eval()
+    # pred1 = model(tiles[0].unsqueeze(0))
+    # pred2 = model(tiles[1].unsqueeze(0))
+    # for p in [pred1, pred2]:
     #     print(p.sum().item())
 
     trainer = Trainer(max_epochs = 1)

@@ -11,8 +11,6 @@ from evaluation.enumerators import MethodAveragePrecision
 from evaluation.utils import from_dict_to_BoundingBox
 from evaluation.misc_metrics import mean_percent_error as mpe
 
-#TODO: see this medium article if you want to use a different backbone
-# - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
 def get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, pretrained = False, **kwargs):
 
     """
@@ -26,7 +24,7 @@ def get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, pretrained = False, 
       - A PyTorch model
     """
 
-    #Loading a model pre-trained on COCO
+    #Loading a model (pre-training is on COCO)
     if backbone == 'ResNet50':
         model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = pretrained, **kwargs)
     elif backbone == 'ResNet101':
@@ -185,7 +183,7 @@ if __name__ == '__main__':
     # print(predict)
 
     # #TRYING OUT PYTORCH LIGHTNING CLASS:
-    model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2)
+    model = get_faster_rcnn(backbone = 'MobileNetV3', num_classes = 2)
     # model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
     # model.load_state_dict(torch.load(model_fp))
     faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.3)
@@ -204,9 +202,9 @@ if __name__ == '__main__':
     sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
     from bird_dataset import *
 
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'w_o_overlap')
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'random', num_tiles = 5, max_neg_examples = 1)
     subset = torch.utils.data.Subset(bird_dataset, [1, 5])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
     trainer = Trainer(max_epochs = 1)
-    trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
+    trainer.fit(faster_rcnn, train_dataloader = bird_dataloader)
