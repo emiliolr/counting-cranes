@@ -78,6 +78,7 @@ class BirdDataset(Dataset):
             img_name = self.image_fps[index].replace('.TIF', '').replace('.tif', '') #this is necessary for calculating metrics...
             for i, content in enumerate(zip(tiles, targets)):
                 img, target = content
+                img = img.float()
                 target_dict = {}
                 target_dict['boxes'] = torch.as_tensor(target['boxes'], dtype = torch.float32)
                 target_dict['labels'] = torch.as_tensor(target['labels'], dtype = torch.int64)
