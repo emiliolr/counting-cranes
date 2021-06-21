@@ -13,11 +13,12 @@ from evaluation.misc_metrics import mean_percent_error as mpe
 
 #TODO: see this medium article if you want to use a different backbone
 # - github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial/blob/master/faster_RCNN.py
-def get_faster_rcnn(num_classes = 2, pretrained = False, **kwargs):
+def get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, pretrained = False, **kwargs):
 
     """
     A convenience function to get a pre-trained Faster R-CNN model w/a ResNet50 backbone.
     Inputs:
+      - backbone: one of ResNet50, ResNet101, or MobileNetV3
       - num_classes: the number of classes to predict
       - pretrained: use Faster R-CNN pretrained on COCO?
       - **kwargs: to be passed on to the Faster R-CNN constructor (mostly hyperparameters)
@@ -26,7 +27,12 @@ def get_faster_rcnn(num_classes = 2, pretrained = False, **kwargs):
     """
 
     #Loading a model pre-trained on COCO
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = pretrained, **kwargs)
+    if backbone == 'ResNet50':
+        model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained = pretrained, **kwargs)
+    elif backbone == 'ResNet101':
+        pass
+    elif backbone == 'MobileNetV3':
+        model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained = pretrained, **kwargs)
 
     #Replace the classifier - get input features from the existing model pipeline and then replace!
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -170,23 +176,23 @@ class FasterRCNNLightning(pl.LightningModule):
 #TESTS:
 if __name__ == '__main__':
     #TESTING get_faster_rcnn FUNCTION:
-    # fake_batch = torch.randn(2, 3, 224, 224)
-    # model = get_faster_rcnn(num_classes = 2)
+    # fake_batch = [torch.randn(3, 200, 200), torch.randn(3, 200, 200)]
+    # model = get_faster_rcnn(backbone = 'MobileNetV3', num_classes = 2)
 
     #  trying a forward pass
     # model.eval()
     # predict = model(fake_batch)
     # print(predict)
 
-    #TRYING OUT PYTORCH LIGHTNING CLASS:
-    model = get_faster_rcnn(num_classes = 2)
-    model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
-    model.load_state_dict(torch.load(model_fp))
-    faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.1)
+    # #TRYING OUT PYTORCH LIGHTNING CLASS:
+    model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2)
+    # model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
+    # model.load_state_dict(torch.load(model_fp))
+    faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.3)
     # print(faster_rcnn)
+    # print(faster_rcnn(fake_batch))
 
     #TRYING OUT MODEL TESTING:
-    from pytorch_lightning.loggers import CSVLogger
     from pytorch_lightning import Trainer
     import json
     from torch.utils.data import DataLoader
@@ -198,9 +204,9 @@ if __name__ == '__main__':
     sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
     from bird_dataset import *
 
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), tiling_method = 'w_o_overlap')
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'w_o_overlap')
     subset = torch.utils.data.Subset(bird_dataset, [1, 5])
     bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
 
-    trainer = Trainer()
+    trainer = Trainer(max_epochs = 1)
     trainer.test(faster_rcnn, test_dataloaders = bird_dataloader)
