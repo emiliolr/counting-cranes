@@ -121,7 +121,7 @@ def get_transforms(train = True):
     """
 
     transforms = []
-    if train: #currently, we aren't using any transforms for validation/testing!
+    if train:
         transforms.append(A.RandomBrightnessContrast(p = 0.5))
 
     return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
