@@ -108,21 +108,24 @@ class BirdDataset(Dataset):
     def __len__(self):
         return len(self.image_fps)
 
-def get_transforms(train = True):
+def get_transforms(task = 'object_detection', train = True):
 
     """
-    A convenience function to hold transformations for the train and test sets.
+    A convenience function to hold transformations for all tasks.
     NOTE: PyTorch's Faster R-CNN impelementation handles normalization.
     Inputs:
-      - train: return training or testing transforms?
-      - method: either object_detection or density_estimation
+      - task: either object_detection or density_estimation
     Outputs:
       - A chain of composed albumentations transformations
     """
 
     transforms = []
-    if train:
+    if task == 'object_detection' and train:
         transforms.append(A.RandomBrightnessContrast(p = 0.5))
+    elif task == 'density_estimation' and train:
+        transforms.append(A.RandomBrightnessContrast(p = 0.5))
+        transforms.append(A.HorizontalFlip(p = 0.5))
+        transforms.append(A.VerticalFlip(p = 0.5))
 
     return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
 
@@ -280,13 +283,13 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(False), tiling_method = 'w_o_overlap', annotation_mode = 'points')
+    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms('density_estimation', False), tiling_method = 'w_o_overlap', annotation_mode = 'points')
     bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_density)
 
     images, targets, counts = next(iter(bird_dataloader))
     print(f'Actual count is {sum(counts)} while count after resizing density is {sum([int(t.sum()) for t in targets])}')
-    # print([int(t.sum()) for t in targets])
-    # print(counts)
+    print([int(t.sum()) for t in targets])
+    print(counts)
 
     # num_degen = 0
     # for i, data in enumerate(bird_dataloader):

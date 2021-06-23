@@ -108,7 +108,7 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     bird_dataset = BirdDataset(root_dir = DATA_FP,
-                               transforms = get_transforms(train = False),
+                               transforms = get_transforms('density_estimation', False),
                                tiling_method = 'w_o_overlap',
                                annotation_mode = 'points',
                                tile_size = (200, 200))

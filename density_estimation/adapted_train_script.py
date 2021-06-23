@@ -64,19 +64,18 @@ def main():
     HYPERPARAMETERS = config['ASPDNet_params']
     args.tile_size = tuple(config['tile_size'])
     args.original_lr = HYPERPARAMETERS['learning_rate']
-    args.lr = 1e-7
-    args.batch_size = 1
+    args.lr = HYPERPARAMETERS['learning_rate']
+    args.batch_size = HYPERPARAMETERS['batch_size']
     args.momentum = 0.95
     args.decay = 5 * 1e-4
     args.start_epoch = 0
-    args.epochs = 1000
+    args.epochs = 2 #TODO; change this
     args.steps = [-1, 1, 100, 150]
     args.scales = [1, 1, 1, 1]
     # args.workers = 4
-    args.seed = time.time()
-    args.print_freq = 30
-    print(args) #TODO: STOPPED HERE!
-    sys.exit()
+    args.seed = 1693
+    args.print_freq = 4
+    args.DATA_FP = config['data_filepath_local']
     # args.train_json = '../building_train.json'
     # args.test_json = '../building_test.json'
     # with open(args.train_json, 'r') as outfile:
@@ -86,15 +85,17 @@ def main():
 
     # args.gpu = '0'
     # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     torch.cuda.manual_seed(args.seed)
 
     model = ASPDNet()
-    model = model.to(device)
-    criterion = nn.MSELoss(size_average=False).to(device)
+    model = model.to(args.device)
+    criterion = nn.MSELoss(size_average=False).to(args.device)
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.decay)
+
+    indices = [14, 24, 7, 1, 28, 30, 5, 17, 10, 27, 12, 22, 16, 20, 25, 23, 0, 21, 3, 6, 33, 15, 19, 9, 18, 2, 32, 11, 29, 13, 26, 31, 8, 4]
 
     # if args.pre:
     #     if os.path.isfile(args.pre):
@@ -109,15 +110,11 @@ def main():
     #     else:
     #         print("=> no checkpoint found at '{}'".format(args.pre))
 
-    config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
-    DATA_FP = config['data_filepath_local']
-    indices = [14, 24, 7, 1, 28, 30, 5, 17, 10, 27, 12, 22, 16, 20, 25, 23, 0, 21, 3, 6, 33, 15, 19, 9, 18, 2, 32, 11, 29, 13, 26, 31, 8, 4]
-
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
-        train(indices, model, criterion, optimizer, epoch, device, DATA_FP)
-        prec1 = validate(indices, model, criterion, device, DATA_FP)
+        train(indices, model, criterion, optimizer, epoch)
+        prec1 = validate(indices, model, criterion)
         # args.task = "gao_large-vehicle_"
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
@@ -132,7 +129,7 @@ def main():
         # }, is_best, args.task)
 
 
-def train(indices, model, criterion, optimizer, epoch, device, DATA_FP):
+def train(indices, model, criterion, optimizer, epoch):
     losses = AverageMeter()
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -150,16 +147,16 @@ def train(indices, model, criterion, optimizer, epoch, device, DATA_FP):
     #                         num_workers=args.workers),
     #     batch_size=args.batch_size)
 
-    bird_dataset_train = BirdDataset(root_dir = DATA_FP,
-                                     transforms = get_transforms(train = True),
+    bird_dataset_train = BirdDataset(root_dir = args.DATA_FP,
+                                     transforms = get_transforms('density_estimation', True),
                                      tiling_method = 'random',
                                      annotation_mode = 'points',
                                      num_tiles = 5,
                                      max_neg_examples = 1,
-                                     tile_size = tile_size)
-    dataset_train = torch.utils.data.Subset(bird_dataset_train, indices[ : 24])
+                                     tile_size = args.tile_size)
+    dataset_train = torch.utils.data.Subset(bird_dataset_train, indices[ : 2]) #TODO: change this back!
     dataloader_train = DataLoader(dataset_train,
-                                  batch_size = HYPERPARAMETERS['batch_size'],
+                                  batch_size = args.batch_size,
                                   shuffle = True,
                                   collate_fn = collate_tiles_density)
 
@@ -173,11 +170,11 @@ def train(indices, model, criterion, optimizer, epoch, device, DATA_FP):
 
         #TODO: verify this stuff (squeezing and unsqueezing?)
         for img, target in zip(imgs, targets):
-            img = img.unsqueeze(0).to(device)
+            img = img.unsqueeze(0).to(args.device)
             img = Variable(img)
             output = model(img).squeeze()
 
-            target = target.to(device)
+            target = target.to(args.device)
             target = Variable(target)
 
             loss = criterion(output, target)
@@ -200,7 +197,7 @@ def train(indices, model, criterion, optimizer, epoch, device, DATA_FP):
                 data_time=data_time, loss=losses))
 
 
-def validate(indices, model, criterion, device, DATA_FP):
+def validate(indices, model, criterion):
     print ('begin test')
     # test_loader = torch.utils.data.DataLoader(
     #     dataset.listDataset(val_list,
@@ -210,30 +207,30 @@ def validate(indices, model, criterion, device, DATA_FP):
     #                                                                         std=[0.229, 0.224, 0.225]),
     #                         ]), train=False),
     #     batch_size=args.batch_size)
-    bird_dataset_eval = BirdDataset(root_dir = DATA_FP,
-                                    transforms = get_transforms(train = False),
+    bird_dataset_eval = BirdDataset(root_dir = args.DATA_FP,
+                                    transforms = get_transforms('density_estimation', train = False),
                                     tiling_method = 'w_o_overlap',
                                     annotation_mode = 'points',
-                                    tile_size = tile_size)
-    dataset_val = torch.utils.data.Subset(bird_dataset_train, indices[24 : 28])
-    dataloader_train = DataLoader(dataset_train,
-                                  batch_size = HYPERPARAMETERS['batch_size'],
-                                  shuffle = True,
-                                  collate_fn = collate_tiles_density)
+                                    tile_size = args.tile_size)
+    dataset_val = torch.utils.data.Subset(bird_dataset_eval, indices[24 : 26]) #TODO: change this back!
+    dataloader_val = DataLoader(dataset_val,
+                                batch_size = args.batch_size,
+                                shuffle = True,
+                                collate_fn = collate_tiles_density)
 
     model.eval()
 
     mae = 0
 
-    for i, (imgs, targets, counts) in enumerate(test_loader):
+    for i, (imgs, targets, counts) in enumerate(dataloader_val):
         for img, target, count in zip(imgs, targets, counts):
-            img = img.to(device)
+            img = img.unsqueeze(0).to(args.device)
             img = Variable(img)
             output = model(img)
 
             mae += abs(int(output.data.sum()) - count)
 
-    mae = mae / len(test_loader)
+    mae = mae / len(dataloader_val)
     print(' * MAE {mae:.3f} '
           .format(mae=mae))
 
@@ -280,4 +277,3 @@ class AverageMeter(object):
 
 if __name__ == '__main__':
     main()
-    pass
