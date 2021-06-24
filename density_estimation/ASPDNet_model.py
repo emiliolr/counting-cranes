@@ -41,7 +41,7 @@ class ASPDNetLightning(pl.LightningModule):
         X, y, tile_counts = batch
 
         preds = self.forward(X)
-        pred_count = int(preds.sum())
+        pred_count = preds.sum()
         gt_count = sum(tile_counts)
 
         return {'pred_count' : pred_count, 'gt_count' : gt_count}
@@ -62,7 +62,7 @@ class ASPDNetLightning(pl.LightningModule):
         X, y, tile_counts = batch #1 batch == 1 parent image!
 
         preds = self.forward(X) #a bunch of densities
-        pred_count = int(preds.sum()) #predicted count over all tiles (so, this is the pred parent image count)
+        pred_count = preds.sum() #predicted count over all tiles (so, this is the pred parent image count)
         gt_count = sum(tile_counts) #true count over all tiles
 
         return {'pred_count' : pred_count, 'gt_count' : gt_count}
@@ -122,6 +122,7 @@ if __name__ == '__main__':
     model = ASPDNet()
     # model.load_state_dict(torch.load(save_name))
     pl_model = ASPDNetLightning(model = model, lr = 1e-5)
+    print(pl_model)
     # tiles = torch.randn(5, 3, 200, 200)
     # tiles, targets, counts = next(iter(dataloader))
     # pl_model.model.eval()
@@ -130,6 +131,6 @@ if __name__ == '__main__':
     # for p in [pred1, pred2]:
     #     print(p.sum().item())
 
-    trainer = Trainer(max_epochs = 1)
-    trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
+    # trainer = Trainer(max_epochs = 1)
+    # trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
     # trainer.test(pl_model, test_dataloaders = dataloader)
