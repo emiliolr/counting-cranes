@@ -23,6 +23,9 @@ class ASPDNetLightning(pl.LightningModule):
         self.model = model
         self.learning_rate = lr
 
+        for param in self.model.frontend.parameters(): #freezing the frontend feature extractor
+            param.requires_grad = False
+
     def forward(self, X):
         preds = torch.stack([self.model(tile.unsqueeze(0)).squeeze() for tile in X]) #forward pass is one tile at a time, like in the source training script
 
@@ -31,7 +34,7 @@ class ASPDNetLightning(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         X, y, _ = batch
 
-        #here, we train one tile at a time
+        #here, we predict one tile at a time
         preds = self.forward(X) #the pred densities for the input images
         loss = nn.functional.mse_loss(preds, y, reduction = 'sum') #this MSE is a different than in the metrics... looks at per-pixel density mismatches between GT and pred
 
@@ -131,6 +134,6 @@ if __name__ == '__main__':
     # for p in [pred1, pred2]:
     #     print(p.sum().item())
 
-    trainer = Trainer(max_epochs = 1)
+    # trainer = Trainer(max_epochs = 1)
     # trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
-    trainer.test(pl_model, test_dataloaders = dataloader)
+    # trainer.test(pl_model, test_dataloaders = dataloader)

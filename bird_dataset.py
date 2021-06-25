@@ -23,9 +23,10 @@ class BirdDataset(Dataset):
       - tile_size: the size of the tiles, in format (width, height)
       - num_tiles: the number of tiles to split each parent image into (only for random tiling)
       - max_neg_examples: the maximum number of negative examples (zero birds) to include in a training batch (only for random tiling)
+      - sigma: the sigma to use for density map generation (only for point annotation)
     """
 
-    def __init__(self, root_dir, transforms, annotation_mode = 'bboxes', tiling_method = 'w_o_overlap', tile_size = (224, 224), num_tiles = 18, max_neg_examples = 6):
+    def __init__(self, root_dir, transforms, annotation_mode = 'bboxes', tiling_method = 'w_o_overlap', tile_size = (224, 224), num_tiles = 18, max_neg_examples = 6, sigma = 1.5):
         self.root_dir = root_dir
         self.transforms = transforms
         self.annotation_mode = annotation_mode
@@ -33,6 +34,7 @@ class BirdDataset(Dataset):
         self.tile_size = tile_size
         self.num_tiles = num_tiles
         self.max_neg_examples = max_neg_examples
+        self.sigma = sigma
 
         #Load the images (tif) and annotations (xml) - sorting to make sure they're in the same order!
         self.image_fps = sorted(os.listdir(os.path.join(self.root_dir, 'images')))
@@ -96,7 +98,7 @@ class BirdDataset(Dataset):
 
             for content in zip(tiles, targets):
                 img, target = content
-                density = density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = 1.5)
+                density = density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = self.sigma)
                 density = cv2.resize(density, (density.shape[0] // 8, density.shape[1] // 8), interpolation = cv2.INTER_CUBIC) * 64 #this is required to ensure that the GT matches the pred density in shape... unfortunately, changes GT count so error is accumulated here!
                 density = torch.as_tensor(density, dtype = torch.float32)
                 count = get_regression(target['boxes'])
