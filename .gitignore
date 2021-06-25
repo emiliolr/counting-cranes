@@ -1,6 +1,12 @@
 .DS_store
 .ipynb_checkpoints
 __pycache__
-initial_*.pth
-lightning_logs
+
 test_images
+*.pth
+*.jpg
+*.png
+*.tif
+*.TIF
+
+lightning_logs

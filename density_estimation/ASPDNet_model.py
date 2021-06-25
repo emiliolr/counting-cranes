@@ -23,7 +23,7 @@ class ASPDNetLightning(pl.LightningModule):
         self.model = model
         self.learning_rate = lr
 
-        for param in self.model.frontend.parameters(): #freezing the frontend feature extractor
+        for param in self.model.frontend.parameters(): #freezing the frontend feature extractor (VGG-16)
             param.requires_grad = False
 
     def forward(self, X):
