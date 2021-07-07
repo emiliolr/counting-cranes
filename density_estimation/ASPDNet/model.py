@@ -91,7 +91,7 @@ class ASPDNet(nn.Module):
         x = F.relu(self.conv6_3(x, offset3))
         x = self.bn6_3(x)
         ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##
-        x = self.output_layer(x)
+        x = F.relu(self.output_layer(x)) #EXPERIMENTAL - maybe delete!
         return x
 
     def _initialize_weights(self):
