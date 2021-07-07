@@ -7,9 +7,10 @@ from deform_conv import DeformConv2D
 
 
 class ASPDNet(nn.Module):
-    def __init__(self, load_weights=False):
+    def __init__(self, allow_neg_densities = False, load_weights = False):
         super(ASPDNet, self).__init__()
         self.seen = 0
+        self.allow_neg_densities = allow_neg_densities
         ## frontend feature extraction
         self.frontend_feat = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512]
         self.mid_feat  = [512,512,512]
@@ -91,7 +92,10 @@ class ASPDNet(nn.Module):
         x = F.relu(self.conv6_3(x, offset3))
         x = self.bn6_3(x)
         ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%##
-        x = F.relu(self.output_layer(x)) #EXPERIMENTAL - maybe delete!
+        if self.allow_neg_densities:
+            x = self.output_layer(x)
+        else:
+            x = F.relu(self.output_layer(x))
         return x
 
     def _initialize_weights(self):

@@ -122,11 +122,12 @@ if __name__ == '__main__':
                             collate_fn = collate_tiles_density)
 
     save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
-    model = ASPDNet()
+    model = ASPDNet(allow_neg_densities = False)
     # model.load_state_dict(torch.load(save_name))
     pl_model = ASPDNetLightning(model = model, lr = 1e-5)
-    # print(pl_model)
-    # tiles = torch.randn(5, 3, 200, 200)
+    tiles = torch.randn(10, 3, 200, 200)
+    pl_model.model.eval()
+    print(f'Num neg: {(pl_model(tiles) < 0).sum()}\nNum pos: {(pl_model(tiles) > 0).sum()}')
     # tiles, targets, counts = next(iter(dataloader))
     # pl_model.model.eval()
     # pred1 = model(tiles[0].unsqueeze(0))
