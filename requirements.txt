@@ -11,3 +11,4 @@ PyQt5==5.15.4
 scipy==1.6.3
 torchsummary==1.5.1
 opencv-python==4.5.2.54
+tifffile==2021.4.8
