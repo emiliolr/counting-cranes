@@ -14,4 +14,6 @@ The prediction component handles the identification, localization, and enumerati
 
 The overlap resolution component combats over-counting in the final estimate that arises due to front-to-back overlap between contiguous images in a flight line. This secondary component introduces an additional challenge to the task, as counts cannot simply be aggregated across all images in isolation. I experiment with methods that leverage geospatial metadata collected by practitioners at USFWS and USGS, as well as methods that are not geospatially aware. 
 
+-----
+
 Make sure to explore the `README.md` files in the subdirectories (`counting-cranes/density_estimation`, for instance) to get more information about the source code that I am adapting from other studies.
