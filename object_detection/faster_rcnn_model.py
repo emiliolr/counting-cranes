@@ -57,7 +57,16 @@ class FasterRCNNLightning(pl.LightningModule):
 
     def forward(self, X):
         self.model.eval() #adding this in b/c forward pass behavior changes if we're in train mode!
+
         return self.model(X)
+
+    def predict_counts(self, X):
+        self.model.eval()
+
+        preds = self.model(X)
+        pred_counts = [len(p['boxes'].tolist()) for p in preds]
+
+        return pred_counts
 
     def training_step(self, batch, batch_idx):
         X, y, img_fp, annot_fp = batch
@@ -174,7 +183,7 @@ class FasterRCNNLightning(pl.LightningModule):
 #TESTS:
 if __name__ == '__main__':
     #TESTING get_faster_rcnn FUNCTION:
-    # fake_batch = [torch.randn(3, 200, 200), torch.randn(3, 200, 200)]
+    fake_batch = [torch.randn(3, 200, 200), torch.randn(3, 200, 200)]
     # model = get_faster_rcnn(backbone = 'MobileNetV3', num_classes = 2)
 
     #  trying a forward pass
@@ -182,29 +191,29 @@ if __name__ == '__main__':
     # predict = model(fake_batch)
     # print(predict)
 
-    # #TRYING OUT PYTORCH LIGHTNING CLASS:
-    model = get_faster_rcnn(backbone = 'MobileNetV3', num_classes = 2)
+    #TRYING OUT PYTORCH LIGHTNING CLASS:
+    model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, box_detections_per_img = 500)
     # model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
     # model.load_state_dict(torch.load(model_fp))
     faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.3)
     # print(faster_rcnn)
-    # print(faster_rcnn(fake_batch))
+    print(faster_rcnn.predict_counts(fake_batch))
 
     #TRYING OUT MODEL TESTING:
-    from pytorch_lightning import Trainer
-    import json
-    from torch.utils.data import DataLoader
-
-    config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
-    DATA_FP = config['data_filepath_local']
-
-    import sys
-    sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
-    from bird_dataset import *
-
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'random', num_tiles = 5, max_neg_examples = 1)
-    subset = torch.utils.data.Subset(bird_dataset, [1, 5])
-    bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
-
-    trainer = Trainer(max_epochs = 1)
-    trainer.fit(faster_rcnn, train_dataloader = bird_dataloader)
+    # from pytorch_lightning import Trainer
+    # import json
+    # from torch.utils.data import DataLoader
+    #
+    # config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
+    # DATA_FP = config['data_filepath_local']
+    #
+    # import sys
+    # sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
+    # from bird_dataset import *
+    #
+    # bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'random', num_tiles = 5, max_neg_examples = 1)
+    # subset = torch.utils.data.Subset(bird_dataset, [1, 5])
+    # bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
+    #
+    # trainer = Trainer(max_epochs = 1)
+    # trainer.fit(faster_rcnn, train_dataloader = bird_dataloader)

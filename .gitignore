@@ -3,6 +3,7 @@
 __pycache__
 
 test_images
+mosaic_tiles
 *.pth
 *.jpg
 *.png
@@ -10,3 +11,5 @@ test_images
 *.TIF
 
 lightning_logs
+
+best_models

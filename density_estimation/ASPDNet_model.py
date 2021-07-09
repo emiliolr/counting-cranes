@@ -31,6 +31,14 @@ class ASPDNetLightning(pl.LightningModule):
 
         return preds
 
+    def predict_counts(self, X):
+        self.model.eval()
+
+        preds = list(self.forward(X))
+        pred_counts = [float(p.sum()) for p in preds] #getting the predicted count for each tile
+
+        return pred_counts
+
     def training_step(self, batch, batch_idx):
         X, y, _ = batch
 
@@ -122,18 +130,13 @@ if __name__ == '__main__':
                             collate_fn = collate_tiles_density)
 
     save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
-    model = ASPDNet(allow_neg_densities = False)
+    model = ASPDNet(allow_neg_densities = True)
     # model.load_state_dict(torch.load(save_name))
     pl_model = ASPDNetLightning(model = model, lr = 1e-5)
-    tiles = torch.randn(10, 3, 200, 200)
+    tiles = torch.randn(3, 3, 200, 200)
     pl_model.model.eval()
-    print(f'Num neg: {(pl_model(tiles) < 0).sum()}\nNum pos: {(pl_model(tiles) > 0).sum()}')
-    # tiles, targets, counts = next(iter(dataloader))
-    # pl_model.model.eval()
-    # pred1 = model(tiles[0].unsqueeze(0))
-    # pred2 = model(tiles[1].unsqueeze(0))
-    # for p in [pred1, pred2]:
-    #     print(p.sum().item())
+
+    print(pl_model.predict_counts(tiles))
 
     # trainer = Trainer(max_epochs = 1)
     # trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
