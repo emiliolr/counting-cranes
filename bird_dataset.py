@@ -99,7 +99,7 @@ class BirdDataset(Dataset):
             for content in zip(tiles, targets):
                 img, target = content
                 density = density_from_bboxes(target['boxes'], img, filter_type = 'fixed', sigma = self.sigma)
-                density = cv2.resize(density, (density.shape[0] // 8, density.shape[1] // 8), interpolation = cv2.INTER_CUBIC) * 64 #this is required to ensure that the GT matches the pred density in shape... unfortunately, changes GT count so error is accumulated here!
+                density = cv2.resize(density, (density.shape[0] // 8, density.shape[1] // 8), interpolation = cv2.INTER_CUBIC) * 64 #this is required to ensure that the GT matches the pred density in shape
                 density = torch.nn.functional.relu(torch.as_tensor(density, dtype = torch.float32)) #bounding out the negative values in the GT density map
                 count = get_regression(target['boxes'])
 

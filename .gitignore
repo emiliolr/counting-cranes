@@ -13,3 +13,5 @@ mosaic_tiles
 lightning_logs
 
 best_models
+
+*.csv

@@ -94,11 +94,11 @@ class FasterRCNNLightning(pl.LightningModule):
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
     def validation_epoch_end(self, outs):
-        gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
+        gt_boxes = [out['gt_boxes'] for out in outs] #ground truths for tiles
         gt_counts = [len(gt) for gt in gt_boxes] #parent image ground truth counts... remember: a single batch is one (tiled) parent image!
         gt_boxes = list(chain(*gt_boxes))
 
-        pred_boxes = [out['pred_boxes'] for out in outs] #predicted
+        pred_boxes = [out['pred_boxes'] for out in outs] #predictions for tiles
         pred_counts = [len(pred) for pred in pred_boxes] #parent image pred counts
         pred_boxes = list(chain(*pred_boxes))
 
@@ -138,11 +138,11 @@ class FasterRCNNLightning(pl.LightningModule):
         return {'pred_boxes' : pred_boxes, 'gt_boxes' : gt_boxes}
 
     def test_epoch_end(self, outs):
-        gt_boxes = [out['gt_boxes'] for out in outs] #ground truth
+        gt_boxes = [out['gt_boxes'] for out in outs]
         gt_counts = [len(gt) for gt in gt_boxes]
         gt_boxes = list(chain(*gt_boxes))
 
-        pred_boxes = [out['pred_boxes'] for out in outs] #predicted
+        pred_boxes = [out['pred_boxes'] for out in outs]
         pred_counts = [len(pred) for pred in pred_boxes]
         pred_boxes = list(chain(*pred_boxes))
 

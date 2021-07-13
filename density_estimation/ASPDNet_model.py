@@ -17,7 +17,7 @@ class ASPDNetLightning(pl.LightningModule):
       - lr: the learning rate for use in the optimizer
     """
 
-    def __init__(self, model, lr):
+    def __init__(self, model, lr = 1e-7):
         super().__init__()
 
         self.model = model
