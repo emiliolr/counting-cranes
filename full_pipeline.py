@@ -21,19 +21,19 @@ from density_estimation.ASPDNet_model import ASPDNetLightning
 from density_estimation.ASPDNet.model import ASPDNet
 from object_detection.faster_rcnn_model import *
 
-def run_pipeline(mosaic_fp, tile_save_dir, model_name, model_save_fp):
+def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers):
 
     """
     A wrapper function that assembles all pipeline elements.
     This function predicts a total count for a given mosaic (i.e., a flight line).
     Inputs:
      - mosaic_fp: the filepath to the mosaic to predict a total count for
-     - tile_save_dir: the directory to save the mosaic tiles to
      - model_name: the model to use for the prediction component... currently, should be one of faster_rcnn or ASPDNet
-     - model_hyperparams: model hyperparameters to use
      - model_save_fp: the saved model as either a .pth or .ckpt file
+     - write_results_fp: the CSV file to write the run results to
+     - num_workers: the number of workers to use for the tile dataloader
     Outputs:
-     - A master count for the input image set or mosaic (also saves run results)
+     - A master count for the input image set or mosaic (also saves run results to desired CSV file)
     """
 
     #TILE MOSAIC:
@@ -42,18 +42,18 @@ def run_pipeline(mosaic_fp, tile_save_dir, model_name, model_save_fp):
     tile_size = (200, 200)
     mosaic_tiles = tiling_w_o_overlap_NO_BBOXES(mosaic, tile_size = tile_size) #tile the mosaic into non-overlapping tiles
 
-    if os.path.isdir(tile_save_dir): #if the save directory exists, it will be removed
-        shutil.rmtree(tile_save_dir)
-    os.mkdir(tile_save_dir) #create an empty directory
+    if os.path.isdir('mosaic_tiles'): #if the tile save directory exists, it will be removed
+        shutil.rmtree('mosaic_tiles')
+    os.mkdir('mosaic_tiles') #create an empty directory
 
     for i, tile in enumerate(mosaic_tiles): #saving the tiles to the created directory
         tile = Image.fromarray(tile)
-        tile.save(os.path.join(tile_save_dir, f'tile_{i}.tif'))
+        tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
     print('Done tiling mosaic!')
 
     #PREDICT ON TILES:
-    tile_dataset = BirdDatasetPREDICTION(tile_save_dir)
-    tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False) #TODO: add more workers here??
+    tile_dataset = BirdDatasetPREDICTION('mosaic_tiles')
+    tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False, num_workers = num_workers)
     print(f'\nPredicting on {len(tile_dataset)} tiles...')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -83,7 +83,7 @@ def run_pipeline(mosaic_fp, tile_save_dir, model_name, model_save_fp):
     else:
         raise NameError(f'Model "{model_name}" is not a supported model type')
 
-    #TODO: you'll want to come through here to make sure that these predictions are looking good qualitatively (are trained models coming in correctly?)
+    #TODO: you might want to come through here to make sure that these predictions are looking good qualitatively (are trained models coming in correctly?)
     #  - maybe save to a global variable and visualize them just to make sure things are correct!
     print('\tProducing counts...')
     total_count = 0
@@ -94,7 +94,6 @@ def run_pipeline(mosaic_fp, tile_save_dir, model_name, model_save_fp):
 
         tile_counts = pl_model.predict_counts(tile_batch) #predicting on the tiles and extracting counts for each tile
         total_count += sum(tile_counts) #adding in the counts for this batch of tiles
-        break #TODO: remove this so that we can produce a full dataset count!
 
     print('Done with prediction!')
 
@@ -104,13 +103,13 @@ def run_pipeline(mosaic_fp, tile_save_dir, model_name, model_save_fp):
     curr_date = str(date.today())
     new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), total_count, model_name] #all of the run results to include
 
-    if not os.path.isfile('pipeline_results.csv'): #either creating a new results CSV or adding to the existing file
-        with open('pipeline_results.csv', 'w') as file:
+    if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
+        with open(write_results_fp, 'w') as file:
             csvwriter = csv.writer(file)
             csvwriter.writerow(fields)
             csvwriter.writerow(new_row)
     else:
-        with open('pipeline_results.csv', 'a') as file:
+        with open(write_results_fp, 'a') as file:
             csvwriter = csv.writer(file)
             csvwriter.writerow(new_row)
     print('\nResults saved!')
@@ -174,11 +173,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser() #an argument parser to collect arguments from the user
 
     parser.add_argument('mosaic_fp', help = 'file path for mosaic')
-    parser.add_argument('tile_save_dir', help = 'directory to save mosaic tiles to')
     parser.add_argument('model_name', help = 'the model name; either ASPDNet or faster_rcnn')
     parser.add_argument('model_fp', help = 'file path for model save; .ckpt or .pth')
     parser.add_argument('write_results_fp', help = 'file path to write pipeline run results to')
+    parser.add_argument('num_workers', help = 'the number of workers to use in the tile dataloader', type = int, default = 0)
 
     args = parser.parse_args()
 
-    run_pipeline(args.mosaic_fp, args.tile_save_dir, args.model_name, args.model_fp)
+    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers)
