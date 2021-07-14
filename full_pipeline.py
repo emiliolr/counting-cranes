@@ -89,6 +89,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     total_count = 0
     for i, tile_batch in enumerate(tile_dataloader):
         print(f'\t\tBatch {i + 1}/{len(tile_dataloader) + 1}')
+        tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
         if model_name == 'faster_rcnn':
             tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
 
