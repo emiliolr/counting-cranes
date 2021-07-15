@@ -6,13 +6,13 @@ import csv
 import time
 import argparse
 from datetime import date
+import gc
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-#TODO: this might not work for Colab!
 sys.path.append(os.path.join(os.getcwd(), 'density_estimation', 'ASPDNet'))
 sys.path.append(os.path.join(os.getcwd(), 'object_detection'))
 
@@ -36,6 +36,8 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
      - A master count for the input image set or mosaic (also saves run results to desired CSV file)
     """
 
+    start_time = time.time()
+
     #TILE MOSAIC:
     mosaic = Image.open(mosaic_fp).convert('RGB')
     print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
@@ -50,6 +52,11 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         tile = Image.fromarray(tile)
         tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
     print('Done tiling mosaic!')
+
+    #  freeing up memory by collecting the mosaic stuff that is no longer needed (it was saved)
+    del mosaic
+    del mosaic_tiles
+    gc.collect()
 
     #PREDICT ON TILES:
     tile_dataset = BirdDatasetPREDICTION('mosaic_tiles')
@@ -83,26 +90,31 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     else:
         raise NameError(f'Model "{model_name}" is not a supported model type')
 
-    #TODO: you might want to come through here to make sure that these predictions are looking good qualitatively (are trained models coming in correctly?)
-    #  - maybe save to a global variable and visualize them just to make sure things are correct!
     print('\tProducing counts...')
+
+    pred_start_time = time.time()
+
     total_count = 0
     for i, tile_batch in enumerate(tile_dataloader):
-        print(f'\t\tBatch {i + 1}/{len(tile_dataloader) + 1}')
+        print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
         tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
         if model_name == 'faster_rcnn':
             tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
 
-        tile_counts = pl_model.predict_counts(tile_batch) #predicting on the tiles and extracting counts for each tile
+        with torch.no_grad(): #disabling gradient calculations... not necessary, since we're just doing forward passes!
+            tile_counts = pl_model.predict_counts(tile_batch) #predicting on the tiles and extracting counts for each tile
         total_count += sum(tile_counts) #adding in the counts for this batch of tiles
+
+    pred_time = time.time() - pred_start_time
 
     print('Done with prediction!')
 
     #SAVING/RETURNING RESULTS:
-    fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model']
+    fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model', 'total_run_time', 'prediction_run_time']
     curr_time = str(time.strftime('%H:%M:%S', time.localtime()))
     curr_date = str(date.today())
-    new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), total_count, model_name] #all of the run results to include
+    pipeline_time = time.time() - start_time
+    new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), total_count, model_name, pipeline_time, pred_time] #all of the run results to include
 
     if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
         with open(write_results_fp, 'w') as file:
