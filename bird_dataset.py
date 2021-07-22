@@ -285,13 +285,21 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     #TESTING THE DATASET:
-    bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms('density_estimation', False), tiling_method = 'w_o_overlap', annotation_mode = 'points')
-    bird_dataloader = DataLoader(bird_dataset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_density)
+    bird_dataset = BirdDataset(root_dir = DATA_FP,
+                               transforms = get_transforms('object_detection', train = False),
+                               tiling_method = 'w_o_overlap',
+                               tile_size = (200, 200))
+    bird_dataloader = DataLoader(bird_dataset,
+                                 batch_size = 1,
+                                 shuffle = False,
+                                 collate_fn = collate_tiles_object_detection)
 
-    images, targets, counts = next(iter(bird_dataloader))
-    print(f'Actual count is {sum(counts)} while count after resizing density is {sum([int(t.sum()) for t in targets])}')
-    print([int(t.sum()) for t in targets])
-    print(counts)
+    images, targets, img_names, _ = next(iter(bird_dataloader))
+    print([len(t['boxes']) for t in targets])
+
+    # print(f'Actual count is {sum(counts)} while count after resizing density is {sum([int(t.sum()) for t in targets])}')
+    # print([int(t.sum()) for t in targets])
+    # print(counts)
 
     # num_degen = 0
     # for i, data in enumerate(bird_dataloader):

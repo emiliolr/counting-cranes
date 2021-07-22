@@ -192,28 +192,37 @@ if __name__ == '__main__':
     # print(predict)
 
     #TRYING OUT PYTORCH LIGHTNING CLASS:
-    model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, box_detections_per_img = 500)
-    # model_fp = '/Users/emiliolr/Desktop/counting-cranes/initial_faster_rcnn.pth'
-    # model.load_state_dict(torch.load(model_fp))
-    faster_rcnn = FasterRCNNLightning(model, iou_threshold = 0.3)
+    constructor_hyperparams = {'box_detections_per_img': 500, 'box_nms_thresh': 0.3}
+    model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams)
+    model_fp = '/Users/emiliolr/Desktop/counting-cranes/best_models/faster_rcnn_BEST_MODEL.pth'
+    model.load_state_dict(torch.load(model_fp))
+    faster_rcnn = FasterRCNNLightning(model)
     # print(faster_rcnn)
-    print(faster_rcnn.predict_counts(fake_batch))
+    # print(faster_rcnn.predict_counts(fake_batch))
 
     #TRYING OUT MODEL TESTING:
     # from pytorch_lightning import Trainer
-    # import json
-    # from torch.utils.data import DataLoader
-    #
-    # config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
-    # DATA_FP = config['data_filepath_local']
-    #
-    # import sys
-    # sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
-    # from bird_dataset import *
-    #
-    # bird_dataset = BirdDataset(root_dir = DATA_FP, transforms = get_transforms(train = False), annotation_mode = 'bboxes', tiling_method = 'random', num_tiles = 5, max_neg_examples = 1)
-    # subset = torch.utils.data.Subset(bird_dataset, [1, 5])
-    # bird_dataloader = DataLoader(subset, batch_size = 1, shuffle = False, collate_fn = collate_tiles_object_detection)
-    #
+    import json
+    from torch.utils.data import DataLoader
+
+    config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
+    DATA_FP = config['data_filepath_local']
+
+    import sys
+    sys.path.append('/Users/emiliolr/Desktop/counting-cranes')
+    from bird_dataset import *
+
+    bird_dataset = BirdDataset(root_dir = DATA_FP,
+                               transforms = get_transforms('object_detection', train = False),
+                               tiling_method = 'w_o_overlap',
+                               tile_size = (200, 200))
+    bird_dataloader = DataLoader(bird_dataset,
+                                 batch_size = 1,
+                                 shuffle = False,
+                                 collate_fn = collate_tiles_object_detection)
+    images, targets, img_names, _ = next(iter(bird_dataloader))
+    print(img_names[0])
+    # print(faster_rcnn.predict_counts(images))
+
     # trainer = Trainer(max_epochs = 1)
     # trainer.fit(faster_rcnn, train_dataloader = bird_dataloader)

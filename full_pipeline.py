@@ -21,7 +21,7 @@ from density_estimation.ASPDNet_model import ASPDNetLightning
 from density_estimation.ASPDNet.model import ASPDNet
 from object_detection.faster_rcnn_model import *
 
-def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers):
+def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None):
 
     """
     A wrapper function that assembles all pipeline elements.
@@ -32,6 +32,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
      - model_save_fp: the saved model as either a .pth or .ckpt file
      - write_results_fp: the CSV file to write the run results to
      - num_workers: the number of workers to use for the tile dataloader
+     - model_hyperparams: any hyperparameters to use for the model
     Outputs:
      - A master count for the input image set or mosaic (also saves run results to desired CSV file)
     """
@@ -59,21 +60,25 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     gc.collect()
 
     #PREDICT ON TILES:
-    tile_dataset = BirdDatasetPREDICTION('mosaic_tiles')
+    tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
     tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False, num_workers = num_workers)
     print(f'\nPredicting on {len(tile_dataset)} tiles...')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    #  grabbing any constructor hyperparams - currently, only necessary for our Faster R-CNN impelementation!
+    if model_hyperparams is not None:
+        constructor_hyperparams = model_hyperparams['constructor_hyperparams']
+
     #  loading the model from either a PyTorch Lightning checkpoint or a PyTorch model save
     print(f'\tLoading the saved {model_name} model...')
     if model_name == 'faster_rcnn':
         if model_save_fp.endswith('.pth'):
-            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2).to(device)
+            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device) #making sure to pass in the constructor hyperparams here
             model.load_state_dict(torch.load(model_save_fp))
             pl_model = FasterRCNNLightning(model)
         elif model_save_fp.endswith('.ckpt'):
-            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2).to(device)
+            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device)
             pl_model = FasterRCNNLightning.load_from_checkpoint(model_save_fp, model = model)
         else:
             raise NameError('File is not of type .pth or .ckpt')
@@ -98,6 +103,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     for i, tile_batch in enumerate(tile_dataloader):
         print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
         tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
+
         if model_name == 'faster_rcnn':
             tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
 
@@ -161,13 +167,18 @@ class BirdDatasetPREDICTION(Dataset):
     A reduced version of BirdDataset to help read in and preprocess mosaic tiles for prediction.
     Inputs:
      - root_dir: the root directory for mosaic tiles
+     - model_name: either Faster R-CNN or ASPDNet
     """
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, model_name):
         self.root_dir = root_dir
         self.tile_fps = sorted(os.listdir(self.root_dir))
-        self.transforms = A.Compose([A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], max_pixel_value = 1),
-                                     ToTensorV2()])
+
+        self.transforms = []
+        if model_name == 'ASPDNet': #PyTorch's Faster R-CNN impelementation handles normalization...
+            self.transforms.append(A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], max_pixel_value = 1))
+        self.transforms.append(ToTensorV2())
+        self.transforms = A.Compose(self.transforms)
 
     def __getitem__(self, index):
         tile_fp = os.path.join(self.root_dir, self.tile_fps[index])
@@ -175,7 +186,7 @@ class BirdDatasetPREDICTION(Dataset):
         tile = np.array(tile)
 
         preprocessed_tile = tile / 255
-        preprocessed_tile = self.transforms(image = preprocessed_tile)['image']
+        preprocessed_tile = self.transforms(image = preprocessed_tile)['image'].float() #making sure that its dtype is float32
 
         return preprocessed_tile
 
@@ -185,12 +196,22 @@ class BirdDatasetPREDICTION(Dataset):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser() #an argument parser to collect arguments from the user
 
+    #  required args
     parser.add_argument('mosaic_fp', help = 'file path for mosaic')
     parser.add_argument('model_name', help = 'the model name; either ASPDNet or faster_rcnn')
     parser.add_argument('model_fp', help = 'file path for model save; .ckpt or .pth')
     parser.add_argument('write_results_fp', help = 'file path to write pipeline run results to')
-    parser.add_argument('num_workers', help = 'the number of workers to use in the tile dataloader', type = int, default = 0)
+
+    #  optional args
+    parser.add_argument('-nw', '--num_workers', help = 'the number of workers to use in the tile dataloader', type = int, default = 0)
+    parser.add_argument('-cfp', '--config_fp', help = 'file path for config, containing hyperparameters for model', default = None)
 
     args = parser.parse_args()
 
-    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers)
+    if args.config_fp is not None:
+        config = json.load(open(args.config_fp, 'r'))
+        model_hyperparams = config[args.model_name + '_params'] #see config.json for structure of config file
+    else:
+        model_hyperparams = None
+
+    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers, model_hyperparams = model_hyperparams)

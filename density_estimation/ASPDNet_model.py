@@ -119,24 +119,26 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
 
     bird_dataset = BirdDataset(root_dir = DATA_FP,
-                               transforms = get_transforms('density_estimation', False),
+                               transforms = get_transforms(train = False),
                                tiling_method = 'w_o_overlap',
                                annotation_mode = 'points',
-                               tile_size = (200, 200))
-    bird_subset = torch.utils.data.Subset(bird_dataset, [0, 1])
-    dataloader = DataLoader(bird_subset,
+                               tile_size = (200, 200),
+                               sigma = 3)
+    # bird_subset = torch.utils.data.Subset(bird_dataset, [0, 1])
+    dataloader = DataLoader(bird_dataset,
                             batch_size = 1,
-                            shuffle = True,
+                            shuffle = False,
                             collate_fn = collate_tiles_density)
 
-    save_name = '/Users/emiliolr/Desktop/counting-cranes/initial_ASPDNet.pth'
-    model = ASPDNet(allow_neg_densities = True)
-    # model.load_state_dict(torch.load(save_name))
-    pl_model = ASPDNetLightning(model = model, lr = 1e-5)
-    tiles = torch.randn(3, 3, 200, 200)
-    pl_model.model.eval()
+    save_name = '/Users/emiliolr/Desktop/counting-cranes/best_models/ASPDNet_BEST_MODEL.ckpt'
+    model = ASPDNet(allow_neg_densities = False)
+    pl_model = ASPDNetLightning.load_from_checkpoint(save_name, model = model)
 
-    print(pl_model.predict_counts(tiles))
+    images, densities, counts = next(iter(dataloader))
+    # print(sum(counts))
+
+    pl_model.model.eval()
+    print(pl_model.predict_counts(images))
 
     # trainer = Trainer(max_epochs = 1)
     # trainer.fit(pl_model, train_dataloader = dataloader, val_dataloaders = dataloader)
