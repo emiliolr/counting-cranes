@@ -7,7 +7,8 @@ import time
 import argparse
 from datetime import date
 import gc
-from PIL import Image
+from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
@@ -21,7 +22,7 @@ from density_estimation.ASPDNet_model import ASPDNetLightning
 from density_estimation.ASPDNet.model import ASPDNet
 from object_detection.faster_rcnn_model import *
 
-def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None):
+def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None, save_preds = False):
 
     """
     A wrapper function that assembles all pipeline elements.
@@ -34,7 +35,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
      - num_workers: the number of workers to use for the tile dataloader
      - model_hyperparams: any hyperparameters to use for the model
     Outputs:
-     - A master count for the input image set or mosaic (also saves run results to desired CSV file)
+     - A total count for the input mosaic (also saves run results to desired CSV file)
     """
 
     start_time = time.time()
@@ -61,7 +62,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     #PREDICT ON TILES:
     tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
-    tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False, num_workers = num_workers)
+    tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
     print(f'\nPredicting on {len(tile_dataset)} tiles...')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -100,27 +101,57 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     pred_start_time = time.time()
 
     total_count = 0
-    for i, tile_batch in enumerate(tile_dataloader):
+    pl_model.model.eval() #making sure we're in eval mode...
+    for i, batch in enumerate(tile_dataloader):
         print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
+        tile_batch, tile_nums = batch #getting out the content from the dataloader
         tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
 
         if model_name == 'faster_rcnn':
             tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
 
         with torch.no_grad(): #disabling gradient calculations... not necessary, since we're just doing forward passes!
-            tile_counts = pl_model.predict_counts(tile_batch) #predicting on the tiles and extracting counts for each tile
-        total_count += sum(tile_counts) #adding in the counts for this batch of tiles
+            tile_preds = pl_model(tile_batch) #getting predictions... not yet counts!
+
+        if model_name == 'faster_rcnn': #predicting on the tiles and extracting counts for each tile
+            tile_counts = [len(p['boxes'].tolist()) for p in tile_preds]
+            total_count += sum(tile_counts) #adding in the counts for this batch of tiles
+        elif model_name == 'ASPDNet':
+            total_count += float(tile_preds.sum()) #adding in the counts
+
+        #Saving predictions as we go
+        if save_preds:
+            os.mkdir('mosaic_tiles/predictions') #create an empty directory for preds
+            if model_name == 'faster_rcnn': #saving tiles w/bboxes overlaid
+                for i, (img, num) in enumerate(zip(tile_batch, tile_nums)):
+                    img = (np.moveaxis(img.numpy(), 0, -1) * 255).astype(np.uint8)
+                    pred_boxes = tile_preds[i]['boxes'].tolist()
+
+                    pil_img = Image.fromarray(img)
+                    draw = ImageDraw.Draw(pil_img)
+                    for b in pred_boxes: #drawing bboxes onto the tile
+                        draw.rectangle(b, outline = 'red', width = 1)
+                    pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
+            elif model_name == 'ASPDNet': #saving the pred densities for each tile
+                cm = plt.get_cmap('jet')
+                for den, num in zip(list(tile_preds), tile_nums):
+                    colored_image = cm(den.numpy()) #applying the color map... makes it easier to look at!
+
+                    pil_img = Image.fromarray((colored_image * 255).astype(np.uint8)[ : , : , : 3]) #converting to PIL image
+                    pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
 
     pred_time = time.time() - pred_start_time
 
     print('Done with prediction!')
+    if save_preds:
+        print(f'Predictions saved at {os.path.join("mosaic_tiles", "predictions")}')
 
     #SAVING/RETURNING RESULTS:
     fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model', 'total_run_time', 'prediction_run_time']
     curr_time = str(time.strftime('%H:%M:%S', time.localtime()))
     curr_date = str(date.today())
     pipeline_time = time.time() - start_time
-    new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), total_count, model_name, pipeline_time, pred_time] #all of the run results to include
+    new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), int(total_count), model_name, pipeline_time, pred_time] #all of the run results to include
 
     if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
         with open(write_results_fp, 'w') as file:
@@ -182,16 +213,46 @@ class BirdDatasetPREDICTION(Dataset):
 
     def __getitem__(self, index):
         tile_fp = os.path.join(self.root_dir, self.tile_fps[index])
+        tile_num = int(tile_fp.split('_')[-1].replace('.tif', '')) #grabbing this for saving preds
         tile = Image.open(tile_fp).convert('RGB')
         tile = np.array(tile)
 
         preprocessed_tile = tile / 255
         preprocessed_tile = self.transforms(image = preprocessed_tile)['image'].float() #making sure that its dtype is float32
 
-        return preprocessed_tile
+        return preprocessed_tile, tile_num
 
     def __len__(self):
         return len(self.tile_fps)
+
+def collate_tiles_PREDICTION(batch):
+    """
+    A workaround to ensure that we can retrieve the tile number for saving pipeline predictions.
+    Inputs:
+      - batch: a list of tuples w/format [(tile, tile_num), ...]
+    Outputs:
+      - A tuple w/a list of tiles and a list of tile numbers
+    """
+    tiles = torch.stack([b[0] for b in batch])
+    tile_nums = [b[1] for b in batch]
+
+    return tiles, tile_nums
+
+def str2bool(arg):
+    """
+    A simple workaround to ensure that bools from the argument parser are handled correctly.
+    From https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse.
+    Inputs:
+      - arg: the string argument passed to the parser
+    Outputs:
+      - True or False, depending on the inputted string
+    """
+    if arg.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif arg.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser() #an argument parser to collect arguments from the user
@@ -205,13 +266,14 @@ if __name__ == '__main__':
     #  optional args
     parser.add_argument('-nw', '--num_workers', help = 'the number of workers to use in the tile dataloader', type = int, default = 0)
     parser.add_argument('-cfp', '--config_fp', help = 'file path for config, containing hyperparameters for model', default = None)
+    parser.add_argument('-sp', '--save_preds', help = 'save predictions for tiles?', type = str2bool, default = False)
 
     args = parser.parse_args()
 
-    if args.config_fp is not None:
+    if args.config_fp is not None: #getting the config file
         config = json.load(open(args.config_fp, 'r'))
         model_hyperparams = config[args.model_name + '_params'] #see config.json for structure of config file
     else:
         model_hyperparams = None
 
-    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers, model_hyperparams = model_hyperparams)
+    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers, model_hyperparams = model_hyperparams, save_preds = args.save_preds)
