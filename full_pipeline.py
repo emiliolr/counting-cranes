@@ -98,6 +98,9 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     print('\tProducing counts...')
 
+    if save_preds: #create an empty directory for preds
+      os.mkdir('mosaic_tiles/predictions')
+
     pred_start_time = time.time()
 
     total_count = 0
@@ -121,9 +124,9 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
         #Saving predictions as we go
         if save_preds:
-            os.mkdir('mosaic_tiles/predictions') #create an empty directory for preds
             if model_name == 'faster_rcnn': #saving tiles w/bboxes overlaid
                 for i, (img, num) in enumerate(zip(tile_batch, tile_nums)):
+                    img = img.cpu() #moving to CPU to avoid CUDA errors...
                     img = (np.moveaxis(img.numpy(), 0, -1) * 255).astype(np.uint8)
                     pred_boxes = tile_preds[i]['boxes'].tolist()
 
@@ -135,6 +138,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
             elif model_name == 'ASPDNet': #saving the pred densities for each tile
                 cm = plt.get_cmap('jet')
                 for den, num in zip(list(tile_preds), tile_nums):
+                    den = den.cpu()
                     colored_image = cm(den.numpy()) #applying the color map... makes it easier to look at!
 
                     pil_img = Image.fromarray((colored_image * 255).astype(np.uint8)[ : , : , : 3]) #converting to PIL image
@@ -142,9 +146,9 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     pred_time = time.time() - pred_start_time
 
-    print('Done with prediction!')
     if save_preds:
         print(f'Predictions saved at {os.path.join("mosaic_tiles", "predictions")}')
+    print('Done with prediction!')
 
     #SAVING/RETURNING RESULTS:
     fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model', 'total_run_time', 'prediction_run_time']
