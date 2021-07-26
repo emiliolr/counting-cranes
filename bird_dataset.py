@@ -129,7 +129,7 @@ def get_transforms(task = 'object_detection', train = True):
         transforms.append(A.HorizontalFlip(p = 0.5))
         transforms.append(A.VerticalFlip(p = 0.5))
 
-    return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+    return A.Compose(transforms, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.5))
 
 def collate_tiles_object_detection(batch):
 
@@ -180,7 +180,7 @@ def collate_tiles_density(batch):
     Inputs:
       - batch: a list of lists of tuples w/format [(image, density), ...]
     Outputs:
-      - A tuple w/the list of images and list of densities
+      - A tuple w/the list of images, list of densities, and list of counts
     """
 
     assert len(batch) == 1, 'Use a batch size of 1'
@@ -216,7 +216,7 @@ def tiling_w_o_overlap(parent_image, bboxes, labels, tile_size = (224, 224), nor
         for w in range(0, (image_width + 1) - tile_width, tile_width):
             coords = (w, h, w + tile_width, h + tile_height)
             transform_list = [A.Crop(*coords)]
-            transforms = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+            transforms = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.5)) #min_visibility of 0.5 here ensures that sum of tile counts is very close to actual parent count!
             t = transforms(image = np.array(padded_parent), bboxes = bboxes, class_labels = labels)
 
             if len(t['bboxes']) == 0:
@@ -249,7 +249,7 @@ def random_tiling(parent_image, bboxes, labels, num_tiles, max_neg_examples, til
       - A tuple of tiled images and new target dictionaries (contains bboxes and labels)
     """
     transform_list = [A.RandomCrop(*tile_size)]
-    random_crop = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.2))
+    random_crop = A.Compose(transform_list, bbox_params = A.BboxParams(format = 'pascal_voc', label_fields = ['class_labels'], min_visibility = 0.5))
     normalization = A.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225], max_pixel_value = 1) #max pixel val is 1 here b/c images will be rescaled before normalization!
 
     tiles = []
@@ -286,16 +286,22 @@ if __name__ == '__main__':
 
     #TESTING THE DATASET:
     bird_dataset = BirdDataset(root_dir = DATA_FP,
-                               transforms = get_transforms('object_detection', train = False),
+                               transforms = get_transforms('density_estimation', train = False),
                                tiling_method = 'w_o_overlap',
-                               tile_size = (200, 200))
+                               tile_size = (200, 200),
+                               annotation_mode = 'points')
     bird_dataloader = DataLoader(bird_dataset,
                                  batch_size = 1,
                                  shuffle = False,
-                                 collate_fn = collate_tiles_object_detection)
+                                 collate_fn = collate_tiles_density)
 
-    images, targets, img_names, _ = next(iter(bird_dataloader))
-    print([len(t['boxes']) for t in targets])
+    for content in bird_dataloader:
+        images, targets, counts = content
+        print(sum(counts))
+        print()
+
+    # for i in range(10):
+    #     bird_dataset[i]
 
     # print(f'Actual count is {sum(counts)} while count after resizing density is {sum([int(t.sum()) for t in targets])}')
     # print([int(t.sum()) for t in targets])
