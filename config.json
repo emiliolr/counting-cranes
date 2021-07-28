@@ -12,7 +12,8 @@
     "iou_threshold_EVALUATION" : 0.3,
     "constructor_hyperparams" : {
       "box_detections_per_img" : 500,
-      "box_nms_thresh" : 0.3
+      "box_nms_thresh" : 0.3,
+      "box_score_thresh" : 0.4
     }
   },
   "ASPDNet_params" : {
