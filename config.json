@@ -4,7 +4,8 @@
   "code_filepath_local" : "/Users/emiliolr/Desktop/counting-cranes/",
   "code_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/counting-cranes",
   "model_saves_filepath_colab" : "/content/drive/MyDrive/Conservation Research/Code/models_saves",
-  "random_seed" : 1693,
+  "fixed_data_permutation" : [37, 34, 16, 22, 3, 23, 5, 0, 6, 11, 31, 20, 7, 24, 8, 19, 33, 12, 36, 17, 14, 15, 29, 38, 26, 35, 18, 27, 21, 25, 39, 13, 30, 32, 10, 28, 4, 9, 2, 1],
+  "random_seeds" : [1693, 2021],
   "tile_size" : [200, 200],
   "faster_rcnn_params" : {
     "learning_rate" : 0.001,
