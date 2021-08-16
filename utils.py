@@ -204,6 +204,21 @@ def pad_parent_for_tiles(parent_image, tile_size = (224, 224)):
 
     return pad_image(parent_image, (right_padding, 0, 0, bottom_padding))
 
+def sort_AGL(observed_AGL):
+
+    """
+    A function to sort the data into our the closest (via absolute distance) AGL "bin" that we flew.
+    Inputs:
+      - observed_AGL: the actual AGL in feet
+    Outputs:
+      - The closest AGL among the "bins"
+    """
+
+    AGL_bins = np.array([2000, 2500, 3000, 3500, 4000, 4500, 5000])
+    abs_dists = np.absolute(AGL_bins - observed_AGL)
+
+    return AGL_bins[np.argmin(abs_dists)]
+
 #TESTS:
 if __name__ == '__main__':
     #TESTING purge_invalid_bboxes:
