@@ -43,22 +43,15 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     #TILE MOSAIC:
     mosaic = Image.open(mosaic_fp).convert('RGB')
     print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
-    tile_size = (200, 200)
-    mosaic_tiles = tiling_w_o_overlap_NO_BBOXES(mosaic, tile_size = tile_size) #tile the mosaic into non-overlapping tiles
 
     if os.path.isdir('mosaic_tiles'): #if the tile save directory exists, it will be removed
         shutil.rmtree('mosaic_tiles')
     os.mkdir('mosaic_tiles') #create an empty directory
 
-    for i, tile in enumerate(mosaic_tiles): #saving the tiles to the created directory
-        tile = Image.fromarray(tile)
-        tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
-    print('Done tiling mosaic!')
+    tile_size = (200, 200)
+    tiling_w_o_overlap_NO_BBOXES(mosaic, tile_size = tile_size) #tile the mosaic into non-overlapping tiles + save tiles
 
-    #  freeing up memory by collecting the mosaic stuff that is no longer needed (it was saved)
-    del mosaic
-    del mosaic_tiles
-    gc.collect()
+    print('Done tiling mosaic!')
 
     #PREDICT ON TILES:
     tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
@@ -170,7 +163,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     return total_count
 
-def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (224, 224)):
+def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
 
     """
     A basic version of tiling w/o overlap that doesn't accept annotations.
@@ -178,23 +171,27 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (224, 224)):
      - image: the image to tile w/o overlap
      - tile_size: the size of the tile, in format (width, height)
     Outputs:
-     - A list of tiles as numpy arrays
+     - Nothing... tiles are saved as part of the process
     """
 
     padded_image = pad_parent_for_tiles(image, tile_size)
     tile_width, tile_height = tile_size
     image_width, image_height = padded_image.size
 
-    tiles = []
+    #  freeing up memory
+    del image
+    gc.collect()
+
+    i = 0
     for h in range(0, (image_height + 1) - tile_height, tile_height):
         for w in range(0, (image_width + 1) - tile_width, tile_width):
             coords = (w, h, w + tile_width, h + tile_height)
             crop = A.Crop(*coords)
             t = crop(image = np.array(padded_image))
 
-            tiles.append(t['image'])
-
-    return tiles
+            tile = Image.fromarray(t['image'])
+            tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
+            i += 1
 
 class BirdDatasetPREDICTION(Dataset):
 
