@@ -182,6 +182,8 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
     del image
     gc.collect()
 
+    zero_tensor = torch.zeros(*(tile_size[0], tile_size[1], 3)) #represents a black tile
+
     i = 0
     for h in range(0, (image_height + 1) - tile_height, tile_height):
         for w in range(0, (image_width + 1) - tile_width, tile_width):
@@ -190,8 +192,10 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
             t = crop(image = np.array(padded_image))
 
             tile = Image.fromarray(t['image'])
-            tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
-            i += 1
+            tensor_tile = torch.from_numpy(np.array(tile))
+            if not bool(torch.all(torch.eq(tensor_tile, zero_tensor))): #only saving if it's not an all-black tile
+                tile.save(os.path.join('mosaic_tiles', f'tile_{i}.tif'))
+                i += 1
 
 class BirdDatasetPREDICTION(Dataset):
 
