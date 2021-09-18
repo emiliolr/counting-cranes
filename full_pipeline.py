@@ -55,7 +55,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     #PREDICT ON TILES:
     tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
-    tile_dataloader = DataLoader(tile_dataset, batch_size = 32, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
+    tile_dataloader = DataLoader(tile_dataset, batch_size = 8, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
     print(f'\nPredicting on {len(tile_dataset)} tiles...')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
