@@ -180,7 +180,6 @@ def bbox_counts_splits(root_dir, permutation, split):
     annotation_fps_split = [annotation_fps[permutation[ : split[0]]],
                             annotation_fps[permutation[split[0] : split[0] + split[1]]],
                             annotation_fps[permutation[split[0] + split[1] : ]]]
-    print(sorted(annotation_fps_split[2]))
 
     bbox_counts = {'train' : 0, 'val' : 0, 'test' : 0}
 
