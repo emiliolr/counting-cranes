@@ -165,6 +165,34 @@ def bbox_dataset_statistics(root_dir):
 
     return return_dict
 
+def bbox_counts_splits(root_dir, permutation, split):
+    """
+    A function to calculate bbox counts for each of a given train/val/test split
+    Inputs:
+      - root_dir: the root directory for imagery/annotations
+      - permutation: the permutation of indices for the split
+      - split: a 3-tuple containing the number of images in each split - format: (train, val, test)
+    Outputs:
+      - A dictionary with counts for each of the splits
+    """
+
+    annotation_fps = np.array(sorted(os.listdir(os.path.join(root_dir, 'annotations'))))
+    annotation_fps_split = [annotation_fps[permutation[ : split[0]]],
+                            annotation_fps[permutation[split[0] : split[0] + split[1]]],
+                            annotation_fps[permutation[split[0] + split[1] : ]]]
+    print(sorted(annotation_fps_split[2]))
+
+    bbox_counts = {'train' : 0, 'val' : 0, 'test' : 0}
+
+    for fps, split in zip(annotation_fps_split, ['train', 'val', 'test']):
+        for fp in fps:
+            annotation_fp = os.path.join(root_dir, 'annotations', fp)
+            bboxes = get_bboxes(annotation_fp)
+
+            bbox_counts[split] += len(bboxes)
+
+    return bbox_counts
+
 def pad_image(image, sides):
 
     """
@@ -230,9 +258,6 @@ if __name__ == '__main__':
 
     config = json.load(open('/Users/emiliolr/Desktop/counting-cranes/config.json', 'r'))
     DATA_FP = config['data_filepath_local']
+    PERM = config['fixed_data_permutation']
 
-    print(bbox_dataset_statistics(DATA_FP))
-
-    #TESTING get_points:
-    single_annot_fp = '/Users/emiliolr/Desktop/Conservation Research/final_dataset/annotations/20180321_223204_097_2806.xml'
-    # get_points(get_bboxes(single_annot_fp))
+    print(bbox_counts_splits(DATA_FP, PERM, (24, 4, 12)))
