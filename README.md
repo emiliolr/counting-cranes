@@ -2,6 +2,8 @@
 
 This repository contains the code for my research with William & Mary's Institute for Integrative Conservation (IIC), the U.S. Fish & Wildlife Service (USFWS), and the U.S. Geological Survey (USGS). Applying deep learning approaches from the object counting literature, I aim to streamline the monitoring process for sandhill cranes. USFWS runs this survey each spring at the Platte River Valley of Nebraska.
 
+Please see the [corresponding paper](https://doi.org/10.1002/rse2.301) published in _Remote Sensing in Ecology and Conservation_ for further details concerning results and the general application context.
+
 ## The Pipeline
 
 A major deliverable for this project is a data processing pipeline that is able to efficiently count cranes in thermal aerial imagery. The pipeline has two major components: crane counting and overlap resolution. The pipeline is designed to be modular to allow for some flexibility in the selected methods. This means that new methods can be inserted as necessary, to reflect advances in object counting approaches or better methods for overlap resolution.
