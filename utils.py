@@ -163,7 +163,7 @@ def bbox_dataset_statistics(root_dir):
                    'total_num_bboxes' : len(all_areas),
                    'num_annotated_imgs' : len(all_bbox_cts)}
 
-    return return_dict
+    return return_dict, all_areas
 
 def bbox_counts_splits(root_dir, permutation, split):
     """
@@ -259,4 +259,14 @@ if __name__ == '__main__':
     DATA_FP = config['data_filepath_local']
     PERM = config['fixed_data_permutation']
 
-    print(bbox_counts_splits(DATA_FP, PERM, (24, 4, 12)))
+    # print(bbox_counts_splits(DATA_FP, PERM, (24, 4, 12)))
+    stat_dict, all_areas = bbox_dataset_statistics(DATA_FP)
+    # with open('/Users/emiliolr/Desktop/all_bbox_areas.csv', 'w') as f:
+    #     f.write(','.join([str(a) for a in all_areas]))
+
+    import matplotlib.pyplot as plt
+
+    plt.hist(all_areas, bins = 25)
+    plt.xlabel('Bounding Box Size')
+    plt.ylabel('Count')
+    plt.show()
