@@ -4,7 +4,7 @@ This repository represents the continuation of the work of [Luz-Ricca et al. (20
 
 ## Initial Setup 
 
-The Python version used for the original codebase is `Python 3.7`. Make sure to create a clean environment and install all required packages using `pip install -r requirements.txt`.
+The Python version used for the original codebase is `Python 3.7`. Make sure to create a clean environment and install all required packages using `pip install -r requirements.txt`. I recommend developing in a `conda` environment to avoid issue--see [this page](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) for guidance.
 
 Pre-requisites for running the prediction pipeline (`full_pipeline.py`):
 1. Model saves for Faster R-CNN or ASPDNet.
