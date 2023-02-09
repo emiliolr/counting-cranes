@@ -8,7 +8,7 @@ The Python version used for the original codebase is `Python 3.7`. Make sure to 
 
 Pre-requisites for running the prediction pipeline (`full_pipeline.py`):
 1. Model saves for Faster R-CNN or ASPDNet.
-2. The mosaics to predict on (or single test images for local testing, e.g., from the final annotated dataset).
+2. The single mosaic (currently can only handle one at a time) to predict on (or single test images for local testing, e.g., from the final annotated dataset).
 
 To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP MODEL_NAME MODEL_FP RESULTS_FP`. Arguments are explained below:
 - `MOSAIC_FP`: the filepath for the mosaic (or single image) to predict on.
