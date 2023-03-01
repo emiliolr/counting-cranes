@@ -3,11 +3,21 @@ import glob
 import argparse
 
 def get_mosaic_fps(args):
+    # Extracting all valid files
     pattern = os.path.join(args.mosaic_directory, '**', '*.jp2') 
     all_files = glob.glob(pattern, recursive = True) # grab all mosaics in this directory + all sub-directories
-    all_fils = [os.path.abspath(f) for f in all_files]
+    all_files = [os.path.abspath(f) for f in all_files] # turn into absolute paths
 
-    return all_files
+    # Subsetting only the requested AGLs 
+    final_files = []
+    for agl in args.include_agls:
+        str_to_check = f'{agl}agl'
+        valid_files = [f for f in all_files if str_to_check in os.path.basename(f)] 
+        final_files.extend(valid_files)
+
+    final_files = list(set(final_files))
+
+    return final_files
 
 if __name__ == '__main__':
     # Collect command line arguments
@@ -24,7 +34,8 @@ if __name__ == '__main__':
         assert agl in AGLs, f'{agl} feet is not a valid AGL'
 
     # Extract all mosaic filepaths from mosaic directory
-    all_files = get_mosaic_fps(args)
+    all_files = sorted(get_mosaic_fps(args))
+    print(f'Found {len(all_files)} mosaics at requested AGLs ({", ".join([str(agl) for agl in args.include_agls])})')
 
     # Write these to filepaths to a text file
     with open('mosaic_filepaths.txt', 'w') as f:
