@@ -49,13 +49,16 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     
     file_paths = [path.strip() for path in file_paths]
     
+
+    #Store links to image in files.txt 
     #Load each image and combine the pixel data into a mosaic image
     mosaic = Image.new('RGB', (len(file_paths), 1))
     for i, path in enumerate(file_paths):
-        img = Image.open(path)
-        mosaic.paste(img, (i, 0))
+        #img = Image.open(path)
+        #mosaic.paste(img, (i, 0))
+        mosaic = Image.open(path)
         
-
+        
         #TILE MOSAIC:
         print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
 
@@ -118,7 +121,6 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         pl_model.model.eval() #making sure we're in eval mode...
         for i, batch in enumerate(tile_dataloader):
 
-            
 
             print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
             tile_batch, tile_nums = batch #getting out the content from the dataloader
@@ -135,9 +137,6 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
                 total_count += sum(tile_counts) #adding in the counts for this batch of tiles
             elif model_name == 'ASPDNet':
                 total_count += float(tile_preds.sum()) #adding in the counts
-
-
-            
 
             #Saving predictions as we go
             if save_preds:
@@ -178,13 +177,13 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     
         if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
                 with open(write_results_fp, 'w') as file:
-                    file.write(f'{path}: {total_count}\n')
+                    #file.write(f'{path}: {total_count}\n')
                     csvwriter = csv.writer(file)
                     csvwriter.writerow(fields)
                     csvwriter.writerow(new_row)
         else:
                 with open(write_results_fp, 'a') as file:
-                    file.write(f'{path}: {total_count}\n')
+                    #file.write(f'{path}: {total_count}\n')
                     csvwriter = csv.writer(file)
                     csvwriter.writerow(new_row)
         print('\nResults saved!')
