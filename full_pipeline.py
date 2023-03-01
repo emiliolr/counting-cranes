@@ -22,7 +22,7 @@ from density_estimation.ASPDNet_model import ASPDNetLightning
 from density_estimation.ASPDNet.model import ASPDNet
 from object_detection.faster_rcnn_model import *
 
-def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None, save_preds = False):
+def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None, save_preds = False, use_cpu = False):
 
     """
     A wrapper function that assembles all pipeline elements.
@@ -58,7 +58,11 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     tile_dataloader = DataLoader(tile_dataset, batch_size = 8, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
     print(f'\nPredicting on {len(tile_dataset)} tiles...')
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    #  get device, only if use_cpu isn't explicitly specified
+    if use_cpu:
+        device = 'cpu'
+    else:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     #  grabbing any constructor hyperparams - currently, only necessary for our Faster R-CNN impelementation!
     if model_hyperparams is not None:
@@ -272,6 +276,7 @@ if __name__ == '__main__':
     parser.add_argument('-nw', '--num_workers', help = 'the number of workers to use in the tile dataloader', type = int, default = 0)
     parser.add_argument('-cfp', '--config_fp', help = 'file path for config, containing hyperparameters for model', default = None)
     parser.add_argument('-sp', '--save_preds', help = 'save predictions for tiles?', type = str2bool, default = False)
+    parser.add_argument('-cpu', '--use_cpu', help = 'force use of cpu?', type = str2bool, default = False)
 
     args = parser.parse_args()
 
@@ -281,4 +286,6 @@ if __name__ == '__main__':
     else:
         model_hyperparams = None
 
-    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, args.write_results_fp, args.num_workers, model_hyperparams = model_hyperparams, save_preds = args.save_preds)
+    run_pipeline(args.mosaic_fp, args.model_name, args.model_fp, 
+                 args.write_results_fp, args.num_workers, model_hyperparams = model_hyperparams, 
+                 save_preds = args.save_preds, use_cpu = args.use_cpu)
