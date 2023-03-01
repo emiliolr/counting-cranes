@@ -54,8 +54,6 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     #Load each image and combine the pixel data into a mosaic image
     mosaic = Image.new('RGB', (len(file_paths), 1))
     for i, path in enumerate(file_paths):
-        #img = Image.open(path)
-        #mosaic.paste(img, (i, 0))
         mosaic = Image.open(path)
         
         
@@ -177,13 +175,11 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     
         if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
                 with open(write_results_fp, 'w') as file:
-                    #file.write(f'{path}: {total_count}\n')
                     csvwriter = csv.writer(file)
                     csvwriter.writerow(fields)
                     csvwriter.writerow(new_row)
         else:
                 with open(write_results_fp, 'a') as file:
-                    #file.write(f'{path}: {total_count}\n')
                     csvwriter = csv.writer(file)
                     csvwriter.writerow(new_row)
         print('\nResults saved!')
