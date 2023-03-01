@@ -11,7 +11,10 @@ mosaic_tiles
 *.TIF
 *.ckpt
 *.csv
+*.txt
 
 lightning_logs
 
 best_models
+
+!*requirements*.txt
