@@ -25,6 +25,7 @@ tiles_dir = 'mosaic_tiles'
 def tile_dir() -> str:
     return tiles_dir
 
+
 def tiling_w_o_overlap_NO_BBOXES(image_file, tile_size = (200, 200)):
 
     """
@@ -146,18 +147,7 @@ if __name__ == '__main__':
     elif args.directory:
         tile_dir(args.directory, (tw, th))
 
-    # Testing runtime of different functions
-    """ new_times = []
-    old_times = []
-    N = 100
-    for i in range(N):
-        start = time.time()
-        new_tiling_function(args.file, tw, th)
-        new_times.append(time.time()-start)
-        start = time.time()
-        tiling_w_o_overlap_NO_BBOXES(Image.open(args.file))
-        old_times.append(time.time()-start)
-
-    print("Mean execution time for new function:", np.mean(np.array(new_times)))
-    print("Mean execution time for old function:", np.mean(np.array(old_times))) """
+    # Run this to test:
+    # For dir : time python3 tile_mosaics.py -d [directory with mosaics]
+    # For file: time python3 tile_mosaics.py -f [mosaic file] 
 
