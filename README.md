@@ -24,6 +24,6 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 2. `scp` the installer to the lab machine.
 3. Run `chmod +x[installer.sh]` to turn the file into an executable.
 4. Install minconda with default settings.
-5. Run `source miniconda3/etc/profile.d/conda.sh`. This will have to be done every time a new lab session is opened. 
+5. Run `source ~/miniconda3/etc/profile.d/conda.sh`. This will have to be done every time a new lab session is opened. 
 6. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) using conda.
 6. Install required packages using `pip install -r lab_requirements.txt`.
