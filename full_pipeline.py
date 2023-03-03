@@ -31,12 +31,14 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     A wrapper function that assembles all pipeline elements.
     This function predicts a total count for a given mosaic (i.e., a flight line).
     Inputs:
-     - mosaic_fp: the filepath to the mosaic to predict a total count for
+     - mosaic_fp: a text file with mosaics to predict a total count for
      - model_name: the model to use for the prediction component... currently, should be one of faster_rcnn or ASPDNet
      - model_save_fp: the saved model as either a .pth or .ckpt file
      - write_results_fp: the CSV file to write the run results to
      - num_workers: the number of workers to use for the tile dataloader
      - model_hyperparams: any hyperparameters to use for the model
+     - save_preds: whether or not to save visualized tile predictions
+     - use_cpu: whether or not to explicitly use CPU for prediction
     Outputs:
      - A total count for the input mosaic (also saves run results to desired CSV file)
     """
@@ -286,7 +288,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser() #an argument parser to collect arguments from the user
 
     #  required args
-    parser.add_argument('mosaic_fp', help = 'file path for mosaic') #file path 
+    parser.add_argument('mosaic_fp', help = 'text file with list of mosaics to process')
     
     parser.add_argument('model_name', help = 'the model name; either ASPDNet or faster_rcnn')
     parser.add_argument('model_fp', help = 'file path for model save; .ckpt or .pth')
