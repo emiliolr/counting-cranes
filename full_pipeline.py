@@ -14,6 +14,9 @@ from albumentations.pytorch import ToTensorV2
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+
+
+
 sys.path.append(os.path.join(os.getcwd(), 'density_estimation', 'ASPDNet'))
 sys.path.append(os.path.join(os.getcwd(), 'object_detection'))
 
@@ -40,130 +43,145 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
 
     start_time = time.time()
 
-    #TILE MOSAIC:
-    mosaic = Image.open(mosaic_fp).convert('RGB')
-    print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
+    #Loading in multiple images in one file 
+    with open(mosaic_fp, 'r') as f:
+        file_paths = f.readlines()
+    
+    file_paths = [path.strip() for path in file_paths]
+    
 
-    if os.path.isdir('mosaic_tiles'): #if the tile save directory exists, it will be removed
-        shutil.rmtree('mosaic_tiles')
-    os.mkdir('mosaic_tiles') #create an empty directory
+    #Store filepaths to mosaics in text file
+    for i, path in enumerate(file_paths):
+        mosaic = Image.open(path)
+        
+        
+        #TILE MOSAIC:
+        print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
 
-    tile_size = (200, 200)
-    tiling_w_o_overlap_NO_BBOXES(mosaic, tile_size = tile_size) #tile the mosaic into non-overlapping tiles + save tiles
+        if os.path.isdir('mosaic_tiles'): #if the tile save directory exists, it will be removed
+            shutil.rmtree('mosaic_tiles')
+        os.mkdir('mosaic_tiles') #create an empty directory
 
-    print('Done tiling mosaic!')
+        tile_size = (200, 200)
+        tiling_w_o_overlap_NO_BBOXES(mosaic, tile_size = tile_size) #tile the mosaic into non-overlapping tiles + save tiles
 
-    #PREDICT ON TILES:
-    tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
-    tile_dataloader = DataLoader(tile_dataset, batch_size = 8, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
-    print(f'\nPredicting on {len(tile_dataset)} tiles...')
+        print('Done tiling mosaic!')
 
-    #  get device, only if use_cpu isn't explicitly specified
-    if use_cpu:
-        device = 'cpu'
-    else:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    #  grabbing any constructor hyperparams - currently, only necessary for our Faster R-CNN impelementation!
-    if model_hyperparams is not None:
-        constructor_hyperparams = model_hyperparams['constructor_hyperparams']
-
-    #  loading the model from either a PyTorch Lightning checkpoint or a PyTorch model save
-    print(f'\tLoading the saved {model_name} model...')
-    if model_name == 'faster_rcnn':
-        if model_save_fp.endswith('.pth'):
-            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device) #making sure to pass in the constructor hyperparams here
-            model.load_state_dict(torch.load(model_save_fp))
-            pl_model = FasterRCNNLightning(model)
-        elif model_save_fp.endswith('.ckpt'):
-            model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device)
-            pl_model = FasterRCNNLightning.load_from_checkpoint(model_save_fp, model = model)
+        #PREDICT ON TILES:
+        tile_dataset = BirdDatasetPREDICTION('mosaic_tiles', model_name)
+        tile_dataloader = DataLoader(tile_dataset, batch_size = 8, shuffle = False, collate_fn = collate_tiles_PREDICTION, num_workers = num_workers)
+        print(f'\nPredicting on {len(tile_dataset)} tiles...')
+        
+        #  get device, only if use_cpu isn't explicitly specified
+        if use_cpu:
+            device = 'cpu'
         else:
-            raise NameError('File is not of type .pth or .ckpt')
-    elif model_name == 'ASPDNet':
-        if model_save_fp.endswith('.pth'):
-            model = ASPDNet(allow_neg_densities = False).to(device)
-            model.load_state_dict(torch.load(model_save_fp))
-            pl_model = ASPDNetLightning(model)
-        elif model_save_fp.endswith('.ckpt'):
-            model = ASPDNet(allow_neg_densities = False).to(device)
-            pl_model = ASPDNetLightning.load_from_checkpoint(model_save_fp, model = model)
-        else:
-            raise NameError('File is not of type .pth or .ckpt')
-    else:
-        raise NameError(f'Model "{model_name}" is not a supported model type')
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    print('\tProducing counts...')
+        #  grabbing any constructor hyperparams - currently, only necessary for our Faster R-CNN impelementation!
+        if model_hyperparams is not None:
+            constructor_hyperparams = model_hyperparams['constructor_hyperparams']
 
-    if save_preds: #create an empty directory for preds
-      os.mkdir('mosaic_tiles/predictions')
-
-    pred_start_time = time.time()
-
-    total_count = 0
-    pl_model.model.eval() #making sure we're in eval mode...
-    for i, batch in enumerate(tile_dataloader):
-        print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
-        tile_batch, tile_nums = batch #getting out the content from the dataloader
-        tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
-
+        #  loading the model from either a PyTorch Lightning checkpoint or a PyTorch model save
+        print(f'\tLoading the saved {model_name} model...')
         if model_name == 'faster_rcnn':
-            tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
-
-        with torch.no_grad(): #disabling gradient calculations... not necessary, since we're just doing forward passes!
-            tile_preds = pl_model(tile_batch) #getting predictions... not yet counts!
-
-        if model_name == 'faster_rcnn': #predicting on the tiles and extracting counts for each tile
-            tile_counts = [len(p['boxes'].tolist()) for p in tile_preds]
-            total_count += sum(tile_counts) #adding in the counts for this batch of tiles
+            if model_save_fp.endswith('.pth'):
+                model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device) #making sure to pass in the constructor hyperparams here
+                model.load_state_dict(torch.load(model_save_fp))
+                pl_model = FasterRCNNLightning(model)
+            elif model_save_fp.endswith('.ckpt'):
+                model = get_faster_rcnn(backbone = 'ResNet50', num_classes = 2, **constructor_hyperparams).to(device)
+                pl_model = FasterRCNNLightning.load_from_checkpoint(model_save_fp, model = model)
+            else:
+                raise NameError('File is not of type .pth or .ckpt')
         elif model_name == 'ASPDNet':
-            total_count += float(tile_preds.sum()) #adding in the counts
+            if model_save_fp.endswith('.pth'):
+                model = ASPDNet(allow_neg_densities = False).to(device)
+                model.load_state_dict(torch.load(model_save_fp))
+                pl_model = ASPDNetLightning(model)
+            elif model_save_fp.endswith('.ckpt'):
+                model = ASPDNet(allow_neg_densities = False).to(device)
+                pl_model = ASPDNetLightning.load_from_checkpoint(model_save_fp, model = model)
+            else:
+                raise NameError('File is not of type .pth or .ckpt')
+        else:
+            raise NameError(f'Model "{model_name}" is not a supported model type')
 
-        #Saving predictions as we go
+        print('\tProducing counts...')
+
+        if save_preds: #create an empty directory for preds
+            os.mkdir('mosaic_tiles/predictions')
+
+        pred_start_time = time.time()
+
+        total_count = 0
+        pl_model.model.eval() #making sure we're in eval mode...
+        for i, batch in enumerate(tile_dataloader):
+
+
+            print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
+            tile_batch, tile_nums = batch #getting out the content from the dataloader
+            tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
+
+            if model_name == 'faster_rcnn':
+                tile_batch = list(tile_batch) #turning it into a list of tensors, as required by Faster R-CNN
+
+            with torch.no_grad(): #disabling gradient calculations... not necessary, since we're just doing forward passes!
+                tile_preds = pl_model(tile_batch) #getting predictions... not yet counts!
+
+            if model_name == 'faster_rcnn': #predicting on the tiles and extracting counts for each tile
+                tile_counts = [len(p['boxes'].tolist()) for p in tile_preds]
+                total_count += sum(tile_counts) #adding in the counts for this batch of tiles
+            elif model_name == 'ASPDNet':
+                total_count += float(tile_preds.sum()) #adding in the counts
+
+            #Saving predictions as we go
+            if save_preds:
+                if model_name == 'faster_rcnn': #saving tiles w/bboxes overlaid
+                    for i, (img, num) in enumerate(zip(tile_batch, tile_nums)):
+                        img = img.cpu() #moving to CPU to avoid CUDA errors...
+                        img = (np.moveaxis(img.numpy(), 0, -1) * 255).astype(np.uint8)
+                        pred_boxes = tile_preds[i]['boxes'].tolist()
+
+                        pil_img = Image.fromarray(img)
+                        draw = ImageDraw.Draw(pil_img)
+                        for b in pred_boxes: #drawing bboxes onto the tile
+                            draw.rectangle(b, outline = 'red', width = 1)
+                        pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
+                elif model_name == 'ASPDNet': #saving the pred densities for each tile
+                    cm = plt.get_cmap('jet')
+                    for den, num in zip(list(tile_preds), tile_nums):
+                        den = den.cpu()
+                        colored_image = cm(den.numpy()) #applying the color map... makes it easier to look at!
+
+                        pil_img = Image.fromarray((colored_image * 255).astype(np.uint8)[ : , : , : 3]) #converting to PIL image #the heck 
+                        pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
+
+        pred_time = time.time() - pred_start_time
+
         if save_preds:
-            if model_name == 'faster_rcnn': #saving tiles w/bboxes overlaid
-                for i, (img, num) in enumerate(zip(tile_batch, tile_nums)):
-                    img = img.cpu() #moving to CPU to avoid CUDA errors...
-                    img = (np.moveaxis(img.numpy(), 0, -1) * 255).astype(np.uint8)
-                    pred_boxes = tile_preds[i]['boxes'].tolist()
+            print(f'Predictions saved at {os.path.join("mosaic_tiles", "predictions")}')
+        print('Done with prediction!')
 
-                    pil_img = Image.fromarray(img)
-                    draw = ImageDraw.Draw(pil_img)
-                    for b in pred_boxes: #drawing bboxes onto the tile
-                        draw.rectangle(b, outline = 'red', width = 1)
-                    pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
-            elif model_name == 'ASPDNet': #saving the pred densities for each tile
-                cm = plt.get_cmap('jet')
-                for den, num in zip(list(tile_preds), tile_nums):
-                    den = den.cpu()
-                    colored_image = cm(den.numpy()) #applying the color map... makes it easier to look at!
+        #SAVING/RETURNING RESULTS:
+        fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model', 'total_run_time', 'prediction_run_time']
+        curr_time = str(time.strftime('%H:%M:%S', time.localtime()))
+        curr_date = str(date.today())
+        pipeline_time = time.time() - start_time
+        new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), int(total_count), model_name, pipeline_time, pred_time] #all of the run results to include
 
-                    pil_img = Image.fromarray((colored_image * 255).astype(np.uint8)[ : , : , : 3]) #converting to PIL image
-                    pil_img.save(os.path.join('mosaic_tiles', 'predictions', f'pred_tile_{num}.tif'))
 
-    pred_time = time.time() - pred_start_time
-
-    if save_preds:
-        print(f'Predictions saved at {os.path.join("mosaic_tiles", "predictions")}')
-    print('Done with prediction!')
-
-    #SAVING/RETURNING RESULTS:
-    fields = ['date', 'time', 'mosaic_fp', 'num_tiles', 'total_count', 'model', 'total_run_time', 'prediction_run_time']
-    curr_time = str(time.strftime('%H:%M:%S', time.localtime()))
-    curr_date = str(date.today())
-    pipeline_time = time.time() - start_time
-    new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), int(total_count), model_name, pipeline_time, pred_time] #all of the run results to include
-
-    if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
-        with open(write_results_fp, 'w') as file:
-            csvwriter = csv.writer(file)
-            csvwriter.writerow(fields)
-            csvwriter.writerow(new_row)
-    else:
-        with open(write_results_fp, 'a') as file:
-            csvwriter = csv.writer(file)
-            csvwriter.writerow(new_row)
-    print('\nResults saved!')
+    
+        if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
+                with open(write_results_fp, 'w') as file:
+                    csvwriter = csv.writer(file)
+                    csvwriter.writerow(fields)
+                    csvwriter.writerow(new_row)
+        else:
+                with open(write_results_fp, 'a') as file:
+                    csvwriter = csv.writer(file)
+                    csvwriter.writerow(new_row)
+        print('\nResults saved!')
 
     return total_count
 
@@ -185,6 +203,7 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
     #  freeing up memory
     del image
     gc.collect()
+
 
     zero_tensor = torch.zeros(*(tile_size[0], tile_size[1], 3)) #represents a black tile
 
@@ -242,7 +261,7 @@ def collate_tiles_PREDICTION(batch):
     Outputs:
       - A tuple w/a list of tiles and a list of tile numbers
     """
-    tiles = torch.stack([b[0] for b in batch])
+    tiles = torch.stack([b[0] for b in batch]) 
     tile_nums = [b[1] for b in batch]
 
     return tiles, tile_nums
@@ -267,7 +286,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser() #an argument parser to collect arguments from the user
 
     #  required args
-    parser.add_argument('mosaic_fp', help = 'file path for mosaic')
+    parser.add_argument('mosaic_fp', help = 'file path for mosaic') #file path 
+    
     parser.add_argument('model_name', help = 'the model name; either ASPDNet or faster_rcnn')
     parser.add_argument('model_fp', help = 'file path for model save; .ckpt or .pth')
     parser.add_argument('write_results_fp', help = 'file path to write pipeline run results to')
