@@ -11,11 +11,11 @@ def get_mosaic_fps(args):
     # Subsetting only the requested AGLs 
     final_files = []
     for agl in args.include_agls:
-        str_to_check = f'{agl}agl'
+        str_to_check = f'-{agl}agl'
         valid_files = [f for f in all_files if str_to_check in os.path.basename(f)] 
         final_files.extend(valid_files)
 
-    final_files = list(set(final_files))
+    final_files = list(set(final_files)) # making sure all filepaths are unique
 
     return final_files
 
