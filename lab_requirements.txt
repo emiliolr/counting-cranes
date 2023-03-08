@@ -13,7 +13,6 @@ opencv-python==4.5.2.54
 tifffile==2023.2.3
 scikit-learn==1.2.1
 pandas==1.5.2
-Pillow==8.3.2
 pytorch-cuda==11.6
 cuda==11.6.1
 --find-links https://download.pytorch.org/whl/nightly/cu117
