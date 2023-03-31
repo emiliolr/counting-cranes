@@ -49,7 +49,6 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         file_paths = f.readlines()
     
     file_paths = [path.strip() for path in file_paths]
-    
 
     #Store filepaths to mosaics in text file
     for i, path in enumerate(file_paths):
@@ -124,7 +123,6 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         pl_model.model.eval() #making sure we're in eval mode...
         for i, batch in enumerate(tile_dataloader):
 
-
             print(f'\t\tBatch {i + 1}/{len(tile_dataloader)}')
             tile_batch, tile_nums = batch #getting out the content from the dataloader
             tile_batch = tile_batch.to(device) #loading the batch onto the same device as the model
@@ -174,9 +172,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         curr_time = str(time.strftime('%H:%M:%S', time.localtime()))
         curr_date = str(date.today())
         pipeline_time = time.time() - start_time
-        new_row = [curr_date, curr_time, mosaic_fp, len(tile_dataset), int(total_count), model_name, pipeline_time, pred_time] #all of the run results to include
-
-
+        new_row = [curr_date, curr_time, path, len(tile_dataset), int(total_count), model_name, pipeline_time, pred_time] #all of the run results to include
     
         if not os.path.isfile(write_results_fp): #either creating a new results CSV or adding to the existing file
                 with open(write_results_fp, 'w') as file:
