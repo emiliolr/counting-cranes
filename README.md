@@ -20,12 +20,8 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 ## Lab machine setup instructions 
 
 1. Sign into the W&M lab computers (if needed [create an account](https://accounts.cs.wm.edu/newuser_template)).
-2. [Install Conda](https://docs.conda.io/en/latest/miniconda.html#linux-installers): download the Linux 64-bit installer for python 3.8.
-2. `scp` the installer to the lab machine.
-3. Run `chmod +x[installer.sh]` to turn the file into an executable.
-4. Install minconda with default settings.
-5. Run `source ~/miniconda3/etc/profile.d/conda.sh` in the same directory as the minconda install. This will have to be done every time a new lab session is opened. 
-6. Create a conda environment using `conda create -n myenv python`.
-7. Activate the conda environment using `conda activate myenv python`.
-8. Install required packages using `pip install -r lab_requirements.txt`.
-
+2. Install the virtualenv package using: `pip install virtualenv`.
+3. Set up a Python virtual environment with: `virtualenv counting-more-cranes-env`.
+4. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate` (you must be in the directory _above_ the venv directory for this command).
+5. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
+6. Install required packages with: `pip install -r lab_requirements.txt`.
