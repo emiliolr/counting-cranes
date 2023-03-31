@@ -6,6 +6,7 @@ test_images
 mosaic_tiles
 *.pth
 *.jpg
+*.jp2
 *.png
 *.tif
 *.TIF
