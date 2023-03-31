@@ -16,12 +16,11 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 - `MODEL_FP`: the filepath for the pre-trained model.
 - `RESULTS_FP`: the filepath for saving prediction results on the inputted mosaic. If the file doesn't exit, it will be created.
 
-
 ## Lab machine setup instructions 
 
-1. Sign into the W&M lab computers (if needed [create an account](https://accounts.cs.wm.edu/newuser_template)).
-2. Install the virtualenv package using: `pip install virtualenv`.
-3. Set up a Python virtual environment with: `virtualenv counting-more-cranes-env`.
+1. SSH into the W&M lab computers (if needed, [create an account](https://accounts.cs.wm.edu/newuser_template)).
+2. Install the virtualenv package using: `pip install virtualenv`. This may already be downloaded.
+3. Set up a new Python virtual environment with: `virtualenv counting-more-cranes-env`.
 4. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate` (you must be in the directory _above_ the venv directory for this command).
-5. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
+5. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using `pip` with CUDA 11.8.
 6. Install required packages with: `pip install -r lab_requirements.txt`.
