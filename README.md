@@ -16,14 +16,11 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 - `MODEL_FP`: the filepath for the pre-trained model.
 - `RESULTS_FP`: the filepath for saving prediction results on the inputted mosaic. If the file doesn't exit, it will be created.
 
-
 ## Lab machine setup instructions 
 
-1. Sign into the W&M lab computers (if needed [create an account](https://accounts.cs.wm.edu/newuser_template)).
-2. [Install Conda](https://docs.conda.io/en/latest/miniconda.html#linux-installers): download the Linux 64-bit installer for python 3.8.
-2. `scp` the installer to the lab machine.
-3. Run `chmod +x[installer.sh]` to turn the file into an executable.
-4. Install minconda with default settings.
-5. Run `source ~/miniconda3/etc/profile.d/conda.sh`. This will have to be done every time a new lab session is opened. 
-6. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) using conda.
-6. Install required packages using `pip install -r lab_requirements.txt`.
+1. SSH into the W&M lab computers (if needed, [create an account](https://accounts.cs.wm.edu/newuser_template)).
+2. Install the virtualenv package using: `pip install virtualenv`. This may already be downloaded.
+3. Set up a new Python virtual environment with: `virtualenv counting-more-cranes-env`.
+4. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate` (you must be in the directory _above_ the venv directory for this command).
+5. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using `pip` with CUDA 11.8.
+6. Install required packages with: `pip install -r lab_requirements.txt`.
