@@ -20,8 +20,8 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 ## Lab machine setup instructions 
 
 1. Sign into the W&M lab computers (if needed [create an account](https://accounts.cs.wm.edu/newuser_template)).
-3. Install the virtualenv package using: `pip install virtualenv`
-4. Set up a Python virtual environment with: `virtualenv counting-more-cranes-env`
-5. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate`
-6. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
-7. Install required packages with: `pip install -r lab_requirements.txt`.
+2. Install the virtualenv package using: `pip install virtualenv`.
+3. Set up a Python virtual environment with: `virtualenv counting-more-cranes-env`.
+4. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate` (you must be in the directory _above_ the venv directory for this command).
+5. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
+6. Install required packages with: `pip install -r lab_requirements.txt`.
