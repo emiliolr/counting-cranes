@@ -23,5 +23,5 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 3. Install the virtualenv package using: `pip install virtualenv`
 4. Set up a Python virtual environment with: `virtualenv counting-more-cranes-env`
 5. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate`
-6. Install required packages with: `pip install -r lab_requirements.txt`.
-7. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
+6. Install the [nightly build of PyTorch](https://pytorch.org/get-started/locally/) for linux, using pip with CUDA 11.8.
+7. Install required packages with: `pip install -r lab_requirements.txt`.
