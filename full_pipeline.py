@@ -82,6 +82,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
             device = 'cpu'
         else:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f'Using {device} for prediction...')
 
         #  grabbing any constructor hyperparams - currently, only necessary for our Faster R-CNN impelementation!
         if model_hyperparams is not None:
