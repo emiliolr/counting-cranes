@@ -19,6 +19,7 @@ To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP
 ## Lab machine setup instructions 
 
 1. SSH into the W&M lab computers (if needed, [create an account](https://accounts.cs.wm.edu/newuser_template)).
+   - Check the Python version. The codebase is expecting `Python 3.8.x`
 2. Install the virtualenv package using: `pip install virtualenv`. This may already be downloaded.
 3. Set up a new Python virtual environment with: `virtualenv counting-more-cranes-env`.
 4. Activate the virtual environment with: `. ./counting-more-cranes-env/bin/activate` (you must be in the directory _above_ the venv directory for this command).
