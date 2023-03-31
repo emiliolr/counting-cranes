@@ -14,9 +14,6 @@ from albumentations.pytorch import ToTensorV2
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-
-
-
 sys.path.append(os.path.join(os.getcwd(), 'density_estimation', 'ASPDNet'))
 sys.path.append(os.path.join(os.getcwd(), 'object_detection'))
 
@@ -24,6 +21,8 @@ from utils import *
 from density_estimation.ASPDNet_model import ASPDNetLightning
 from density_estimation.ASPDNet.model import ASPDNet
 from object_detection.faster_rcnn_model import *
+
+Image.MAX_IMAGE_PIXELS = None
 
 def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_workers, model_hyperparams = None, save_preds = False, use_cpu = False):
 
@@ -56,6 +55,11 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
     for i, path in enumerate(file_paths):
         mosaic = Image.open(path)
         
+        #Stripping alpha channel from 2018 imagery
+        if path.endswith('.jp2'):
+            mosaic = Image.fromarray(np.array(mosaic)[ : , : , 0])
+
+        mosaic = mosaic.convert('RGB')
         
         #TILE MOSAIC:
         print(f'Tiling mosaic of size {mosaic.size[0]}x{mosaic.size[1]}...')
@@ -202,10 +206,11 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
     tile_width, tile_height = tile_size
     image_width, image_height = padded_image.size
 
+    padded_image = np.array(padded_image)
+
     #  freeing up memory
     del image
     gc.collect()
-
 
     zero_tensor = torch.zeros(*(tile_size[0], tile_size[1], 3)) #represents a black tile
 
@@ -214,7 +219,7 @@ def tiling_w_o_overlap_NO_BBOXES(image, tile_size = (200, 200)):
         for w in range(0, (image_width + 1) - tile_width, tile_width):
             coords = (w, h, w + tile_width, h + tile_height)
             crop = A.Crop(*coords)
-            t = crop(image = np.array(padded_image))
+            t = crop(image = padded_image)
 
             tile = Image.fromarray(t['image'])
             tensor_tile = torch.from_numpy(np.array(tile))
