@@ -10,11 +10,15 @@ Pre-requisites for running the prediction pipeline (`full_pipeline.py`):
 1. Model saves for Faster R-CNN or ASPDNet.
 2. The single mosaic (currently can only handle one at a time) to predict on (or single test images for local testing, e.g., from the final annotated dataset).
 
+## Using the prediction pipeline
+
 To run `final_pipeline.py`, use the command `python3 final_pipeline.py MOSAIC_FP MODEL_NAME MODEL_FP RESULTS_FP`. Arguments are explained below:
 - `MOSAIC_FP`: the filepath for the mosaic (or single image) to predict on.
 - `MODEL_NAME`: either "ASPDNet" or "faster_rcnn".
 - `MODEL_FP`: the filepath for the pre-trained model.
 - `RESULTS_FP`: the filepath for saving prediction results on the inputted mosaic. If the file doesn't exit, it will be created.
+
+On the W&M lab machines, it's often helpful to run commands using `nohup python ... &` to ensure it keeps running, even after exiting the SSH session. You can check the progress of the process using `ps xw` and by looking at the `nohup.out` file that captures the script outputs.
 
 ## Lab machine setup instructions 
 
