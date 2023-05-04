@@ -59,7 +59,7 @@ class ASPDNet(nn.Module):
         self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
 
         if not load_weights:
-            mod = models.vgg16(pretrained = True)
+            mod = models.vgg16(weights="VGG16_Weights.IMAGENET1K_V1") 
             self._initialize_weights()
             for i in range(len(self.frontend.state_dict().items())):
                 list(self.frontend.state_dict().items())[i][1].data[:] = list(mod.state_dict().items())[i][1].data[:]

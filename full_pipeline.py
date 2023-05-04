@@ -103,7 +103,7 @@ def run_pipeline(mosaic_fp, model_name, model_save_fp, write_results_fp, num_wor
         elif model_name == 'ASPDNet':
             if model_save_fp.endswith('.pth'):
                 model = ASPDNet(allow_neg_densities = False).to(device)
-                model.load_state_dict(torch.load(model_save_fp))
+                model.load_state_dict(torch.load(model_save_fp)) 
                 pl_model = ASPDNetLightning(model)
             elif model_save_fp.endswith('.ckpt'):
                 model = ASPDNet(allow_neg_densities = False).to(device)
